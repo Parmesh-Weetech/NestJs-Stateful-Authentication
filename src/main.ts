@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { AppModule } from './app.module';
 
@@ -17,7 +18,7 @@ const sessionLifetimeMs = Number(process.env.SESSION_TTL_MS) || 1000 * 60 * 60 *
 const sessionLifetimeSeconds = Math.floor(sessionLifetimeMs / 1000);
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const redisService = app.get(RedisService);
 
   app.set('trust proxy', 1);
