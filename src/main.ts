@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
@@ -11,11 +12,9 @@ import { RedisStore } from 'connect-redis';
 
 import { config } from 'dotenv';
 import { RedisService } from './redis/redis.service';
+import { getExpiredTime } from './common/helper/getExpiredTime';
 
 config();
-
-const sessionLifetimeMs = Number(process.env.SESSION_TTL_MS) || 1000 * 60 * 60 * 24;
-const sessionLifetimeSeconds = Math.floor(sessionLifetimeMs / 1000);
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -23,13 +22,23 @@ async function bootstrap() {
 
   app.set('trust proxy', 1);
 
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  const expiredTimes = getExpiredTime();
+
   app.use(
     session({
       name: process.env.SESSION_COOKIE_NAME || 'session',
       store: new RedisStore({
         client: redisService.client,
         prefix: 'sess:',
-        ttl: sessionLifetimeSeconds,
+        ttl: expiredTimes.seconds,
       }),
       secret: process.env.SESSION_SECRET as string,
       resave: false,
@@ -37,7 +46,7 @@ async function bootstrap() {
       rolling: true,
       unset: 'destroy',
       cookie: {
-        maxAge: sessionLifetimeMs,
+        maxAge: expiredTimes.ms,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',

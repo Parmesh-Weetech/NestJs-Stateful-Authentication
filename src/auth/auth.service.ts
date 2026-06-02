@@ -1,6 +1,7 @@
 import {
     BadRequestException,
     Injectable,
+    InternalServerErrorException,
     UnauthorizedException,
 } from '@nestjs/common';
 
@@ -125,19 +126,26 @@ export class AuthService {
             await this.redisService.deleteRedisSession(existingSession.sessionId);
         }
 
-        await new Promise<void>((resolve, reject) => {
-            req.logout((err) => {
-                if (err) return reject(err);
-                resolve();
+        try {
+            await new Promise<void>((resolve, reject) => {
+                req.logout((err) => {
+                    if (err) return reject(err);
+                    resolve();
+                });
             });
-        });
+        } catch (error) {
+            console.log(error);
+            throw new InternalServerErrorException('Internal Server Error while logging out!');
+        }
 
-        await new Promise<void>((resolve, reject) => {
-            req.session.destroy((err) => {
-                if (err) return reject(err);
-                resolve();
+        if (req.session) {
+            await new Promise<void>((resolve, reject) => {
+                req.session.destroy((err) => {
+                    if (err) return reject(err);
+                    resolve();
+                });
             });
-        });
+        }
 
         return {
             message: 'Logged out',

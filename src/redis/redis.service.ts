@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { createRedisClient } from '../common/helper/createRedisClient';
+import { getExpiredTime } from '../common/helper/getExpiredTime';
 
 import type { RedisClientType } from 'redis';
 
@@ -32,6 +33,20 @@ export class RedisService
 
     buildRedisSessionKey(sessionId: string): string {
         return `sess:${sessionId}`;
+    }
+
+    async refreshRedisSession(sessionId: string): Promise<void> {
+        const expiredTime = getExpiredTime();
+        const key = this.buildRedisSessionKey(sessionId);
+        const value = await this.client.get(key);
+
+        if (!value) {
+            return;
+        }
+
+        await this.client.set(key, value, {
+            EX: expiredTime.seconds,
+        });
     }
 
     async getRedisSession(sessionId: string): Promise<string | null> {

@@ -5,12 +5,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { UserSession } from './entities/user-session.entity';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class SessionService {
     constructor(
         @InjectRepository(UserSession)
         private readonly sessionRepository: Repository<UserSession>,
+
+        private readonly redisService: RedisService,
     ) {}
 
     async createSession(data: Partial<UserSession>) {
@@ -114,5 +117,7 @@ export class SessionService {
                 lastActivityAt: now,
             },
         );
+
+        await this.redisService.refreshRedisSession(sessionId);
     }
 }
