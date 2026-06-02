@@ -8,34 +8,20 @@ import passport from 'passport';
 
 import { RedisStore } from 'connect-redis';
 
-import { createClient } from 'redis';
-
 import { config } from 'dotenv';
+import { RedisService } from './redis/redis.service';
 
 config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  const redisClient = createClient({
-    url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
-    password: process.env.REDIS_PASSWORD,
-  });
-
-  await redisClient.connect();
-
-  redisClient.on('connect', () => {
-    console.log('Redis connected');
-  });
-
-  redisClient.on('error', (err) => {
-    console.log(err);
-  });
+  const redisService = app.get(RedisService);
 
   app.use(
     session({
+      name: 'session',
       store: new RedisStore({
-        client: redisClient,
+        client: redisService.client,
         prefix: 'sess:',
         ttl: 60 * 60 * 24,
       }),
@@ -53,7 +39,9 @@ async function bootstrap() {
 
         secure: process.env.NODE_ENV === 'production',
 
-        sameSite: 'strict',
+        sameSite: 'lax',
+
+        path: '/'
       },
     }),
   );

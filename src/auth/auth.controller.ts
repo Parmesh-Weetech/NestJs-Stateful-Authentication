@@ -2,7 +2,11 @@ import {
     Body,
     Controller,
     Get,
+    Headers,
+    HttpCode,
+    ParseUUIDPipe,
     Post,
+    Query,
     Req,
     Res,
     UseGuards,
@@ -39,11 +43,14 @@ export class AuthController {
 
     @UseGuards(LocalAuthGuard)
     @Post('login')
-    async login(@Req() req: Request): Promise<{
+    async login(
+        @Req() req: Request,
+        @Headers('X-Device-Id') deviceId?: string
+    ): Promise<{
         message: string,
         user: Express.User | undefined
     }> {
-        return await this.authService.login(req)
+        return await this.authService.login(req, deviceId || null)
     }
 
     @UseGuards(AuthenticatedGuard)
@@ -52,23 +59,27 @@ export class AuthController {
         return req.user;
     }
 
+    @UseGuards(AuthenticatedGuard)
+    @Get('sessions')
+    async listSessions(
+        @Req() req: Request,
+        @Query('type') type: 'active' | 'in-active' | 'both' = 'active'
+    ) {
+        return await this.authService.listUserSessions(
+            req,
+            type
+        )
+    }
+
+    @HttpCode(200)
     @Post('logout')
     async logout(
         @Req() req: Request,
-        @Res() res: Response,
+        @Headers('X-Device-Id') deviceId: string
     ) {
-        await this.sessionService.invalidateSession(
-            req.sessionID,
+        return await this.authService.logout(
+            req,
+            deviceId as string,
         );
-
-        req.logout(() => {
-            req.session.destroy(() => {
-                res.clearCookie('connect.sid');
-
-                res.send({
-                    message: 'Logged out',
-                });
-            });
-        });
     }
 }

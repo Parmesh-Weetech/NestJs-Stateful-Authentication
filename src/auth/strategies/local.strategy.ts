@@ -37,6 +37,12 @@ export class LocalStrategy extends PassportStrategy(
             );
         }
 
+        if (!user.isActive) {
+            throw new UnauthorizedException(
+                'Your account has been deactivated. Please contact your administrator',
+            );
+        }
+
         return user;
     }
 }

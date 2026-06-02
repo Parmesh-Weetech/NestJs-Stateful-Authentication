@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import {
     IsEmail,
     MaxLength,
@@ -10,5 +11,6 @@ export class RegisterDto {
 
     @MinLength(8)
     @MaxLength(16)
+    @Exclude()
     password: string;
 }

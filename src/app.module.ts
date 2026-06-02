@@ -11,6 +11,9 @@ import { UserModule } from './user/user.module';
 import { User } from './user/entities/user.entity';
 
 import { UserSession } from './auth/entities/user-session.entity';
+import { RedisModule } from './redis/redis.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { SessionActivityInterceptor } from './common/interceptors/session-activity.interceptor';
 
 @Module({
   imports: [
@@ -41,6 +44,13 @@ import { UserSession } from './auth/entities/user-session.entity';
 
     AuthModule,
     UserModule,
+    RedisModule,
   ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SessionActivityInterceptor
+    }
+  ]
 })
 export class AppModule { }

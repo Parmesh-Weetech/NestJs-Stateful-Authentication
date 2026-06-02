@@ -14,8 +14,10 @@ export class UserService {
     ) { }
 
     async findByEmail(email: string) {
+        const normalizedEmail = email.toLowerCase().trim();
+
         return this.userRepository.findOne({
-            where: { email },
+            where: { email: normalizedEmail },
         });
     }
 

@@ -39,6 +39,11 @@ export class UserSession {
     @Column({
         nullable: true,
     })
+    deviceId: string;
+
+    @Column({
+        nullable: true,
+    })
     ipAddress: string;
 
     @Column({
@@ -61,6 +66,11 @@ export class UserSession {
         nullable: true,
     })
     lastActivityAt: Date;
+
+    @Column({
+        nullable: true,
+    })
+    invalidatedAt: Date;
 
     @CreateDateColumn()
     createdAt: Date;

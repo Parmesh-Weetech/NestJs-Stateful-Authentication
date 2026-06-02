@@ -17,6 +17,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { SessionSerializer } from './session.serializer';
 
 import { UserSession } from './entities/user-session.entity';
+import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
@@ -29,6 +30,8 @@ import { UserSession } from './entities/user-session.entity';
     TypeOrmModule.forFeature([
       UserSession,
     ]),
+
+    RedisModule
   ],
 
   controllers: [AuthController],
@@ -39,5 +42,6 @@ import { UserSession } from './entities/user-session.entity';
     LocalStrategy,
     SessionSerializer,
   ],
+  exports: [SessionService]
 })
 export class AuthModule { }
