@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { UserService } from '../user/user.service';
 import { SessionService } from './session.service';
 import { RedisService } from 'src/redis/redis.service';
+import { getExpiredTime } from 'src/common/helper/getExpiredTime';
 
 @Injectable()
 export class AuthService {
@@ -81,6 +82,8 @@ export class AuthService {
             });
         });
 
+        const expiredTimes = getExpiredTime();
+
         await this.sessionService.createSession({
             userId: (req.user as any)?.id,
             sessionId: req.sessionID,
@@ -88,7 +91,7 @@ export class AuthService {
             ipAddress: req.ip,
             userAgent: req.headers['user-agent'],
             isValid: true,
-            expiresAt: new Date(Date.now() + sessionLifetimeMs()),
+            expiresAt: new Date(Date.now() + expiredTimes.ms),
             lastActivityAt: new Date(),
         });
 
@@ -183,6 +186,3 @@ export class AuthService {
     }
 }
 
-function sessionLifetimeMs() {
-    return Number(process.env.SESSION_TTL_MS) || 1000 * 60 * 60 * 24;
-}
