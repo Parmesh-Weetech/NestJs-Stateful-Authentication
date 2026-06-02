@@ -4,15 +4,12 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserSession } from '../entities/user-session.entity';
+import { SessionService } from '../session.service';
 
 @Injectable()
 export class AuthenticatedGuard implements CanActivate {
     constructor(
-        @InjectRepository(UserSession)
-        private readonly sessionRepository: Repository<UserSession>,
+        private readonly sessionService: SessionService,
     ) {}
 
     async canActivate(context: ExecutionContext) {
@@ -24,22 +21,20 @@ export class AuthenticatedGuard implements CanActivate {
             );
         }
 
-        const sessionId = req.sessionID;
+        if (!req.sessionID) {
+            throw new UnauthorizedException(
+                'Session not found',
+            );
+        }
 
-        const session = await this.sessionRepository.findOne({
-            where: {
-                sessionId,
-                isValid: true,
-            },
-        });
+        const session = await this.sessionService.findSessionBySessionId(req.sessionID);
 
-        if (!session) {
+        if (!session || !(await this.sessionService.isSessionActive(req.sessionID))) {
             throw new UnauthorizedException(
                 'Session invalid or expired',
             );
         }
 
-        // attach session for later use (optional but useful)
         req.dbSession = session;
 
         return true;

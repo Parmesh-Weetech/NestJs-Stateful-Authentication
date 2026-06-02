@@ -17,8 +17,8 @@ export class AuthService {
     constructor(
         private readonly userService: UserService,
         private readonly sessionService: SessionService,
-        private readonly redisService: RedisService
-    ) { }
+        private readonly redisService: RedisService,
+    ) {}
 
     async register(
         email: string,
@@ -46,7 +46,7 @@ export class AuthService {
 
     async login(
         req: Request,
-        deviceId?: string | null
+        deviceId?: string | null,
     ) {
         if (!deviceId) {
             throw new UnauthorizedException(
@@ -56,7 +56,16 @@ export class AuthService {
 
         const user = req.user;
 
-        // 1. destroy old session + create new one
+        const previousSession = await this.sessionService.findSessionByUserAndDeviceId(
+            (user as any).id,
+            deviceId,
+        );
+
+        if (previousSession) {
+            await this.sessionService.invalidateSessionBySessionId(previousSession.sessionId);
+            await this.redisService.deleteRedisSession(previousSession.sessionId);
+        }
+
         await new Promise<void>((resolve, reject) => {
             req.session.regenerate((err) => {
                 if (err) return reject(err);
@@ -64,7 +73,6 @@ export class AuthService {
             });
         });
 
-        // Re-login user into NEW session
         await new Promise<void>((resolve, reject) => {
             req.login(user as Express.User, (err) => {
                 if (err) return reject(err);
@@ -72,17 +80,6 @@ export class AuthService {
             });
         });
 
-        const existingSession = await this.sessionService.findSessionByUserAndDeviceId(
-            (req.user as any).id,
-            deviceId,
-        );
-
-        if (existingSession) {
-            await this.sessionService.invalidateSessionBySessionId(existingSession.sessionId);
-            await this.redisService.deleteRedisSession(existingSession.sessionId);
-        }
-
-        // 2. now sessionID is rotated
         await this.sessionService.createSession({
             userId: (req.user as any)?.id,
             sessionId: req.sessionID,
@@ -90,7 +87,7 @@ export class AuthService {
             ipAddress: req.ip,
             userAgent: req.headers['user-agent'],
             isValid: true,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
+            expiresAt: new Date(Date.now() + sessionLifetimeMs()),
             lastActivityAt: new Date(),
         });
 
@@ -102,7 +99,7 @@ export class AuthService {
 
     async logout(
         req: Request,
-        deviceId: string
+        deviceId: string,
     ) {
         if (!deviceId) {
             throw new UnauthorizedException(
@@ -128,7 +125,13 @@ export class AuthService {
             await this.redisService.deleteRedisSession(existingSession.sessionId);
         }
 
-        // destroy express session
+        await new Promise<void>((resolve, reject) => {
+            req.logout((err) => {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
+
         await new Promise<void>((resolve, reject) => {
             req.session.destroy((err) => {
                 if (err) return reject(err);
@@ -143,7 +146,7 @@ export class AuthService {
 
     async listUserSessions(
         req: Request,
-        type: 'active' | 'in-active' | 'both'
+        type: 'active' | 'inactive' | 'both',
     ) {
         return await this.sessionService.findSessionByUserIdAndType((req.user as any)?.id, type);
     }
@@ -170,4 +173,8 @@ export class AuthService {
 
         return user;
     }
+}
+
+function sessionLifetimeMs() {
+    return Number(process.env.SESSION_TTL_MS) || 1000 * 60 * 60 * 24;
 }

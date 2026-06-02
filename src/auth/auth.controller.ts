@@ -4,15 +4,13 @@ import {
     Get,
     Headers,
     HttpCode,
-    ParseUUIDPipe,
     Post,
     Query,
     Req,
-    Res,
     UseGuards,
 } from '@nestjs/common';
 
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 
 import { AuthService } from './auth.service';
 
@@ -22,13 +20,10 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 
 import { AuthenticatedGuard } from './guards/authenticated.guard';
 
-import { SessionService } from './session.service';
-
 @Controller('auth')
 export class AuthController {
     constructor(
         private readonly authService: AuthService,
-        private readonly sessionService: SessionService,
     ) { }
 
     @Post('register')
@@ -45,7 +40,7 @@ export class AuthController {
     @Post('login')
     async login(
         @Req() req: Request,
-        @Headers('X-Device-Id') deviceId?: string
+        @Headers('X-Device-Id') deviceId?: string,
     ): Promise<{
         message: string,
         user: Express.User | undefined
@@ -63,19 +58,19 @@ export class AuthController {
     @Get('sessions')
     async listSessions(
         @Req() req: Request,
-        @Query('type') type: 'active' | 'in-active' | 'both' = 'active'
+        @Query('type') type: 'active' | 'inactive' | 'both' = 'active',
     ) {
         return await this.authService.listUserSessions(
             req,
-            type
-        )
+            type,
+        );
     }
 
     @HttpCode(200)
     @Post('logout')
     async logout(
         @Req() req: Request,
-        @Headers('X-Device-Id') deviceId: string
+        @Headers('X-Device-Id') deviceId: string,
     ) {
         return await this.authService.logout(
             req,
