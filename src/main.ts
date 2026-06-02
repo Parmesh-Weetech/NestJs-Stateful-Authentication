@@ -10,6 +10,10 @@ import { RedisStore } from 'connect-redis';
 
 import { createClient } from 'redis';
 
+import { config } from 'dotenv';
+
+config();
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -47,9 +51,9 @@ async function bootstrap() {
 
         httpOnly: true,
 
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
 
-        sameSite: 'lax',
+        sameSite: 'strict',
       },
     }),
   );

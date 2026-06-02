@@ -39,22 +39,11 @@ export class AuthController {
 
     @UseGuards(LocalAuthGuard)
     @Post('login')
-    async login(@Req() req: Request) {
-        await this.sessionService.createSession({
-            userId: (req.user as any)?.id,
-            sessionId: req.sessionID,
-            ipAddress: req.ip,
-            userAgent: req.headers['user-agent'],
-            expiresAt: new Date(
-                Date.now() + 1000 * 60 * 60 * 24,
-            ),
-            lastActivityAt: new Date(),
-        });
-
-        return {
-            message: 'Logged in',
-            user: req.user,
-        };
+    async login(@Req() req: Request): Promise<{
+        message: string,
+        user: Express.User | undefined
+    }> {
+        return await this.authService.login(req)
     }
 
     @UseGuards(AuthenticatedGuard)
