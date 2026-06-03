@@ -7,9 +7,9 @@ export class RateLimitGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    // const user = request.user;
+    const user = request.user;
     const ip = request.headers['x-forwarded-for']?.split(',')[0] || request.ip;
-    // const deviceId = request.headers['x-device-id'];
+    const deviceId = request.headers['x-device-id'];
 
     const result = await this.rateLimitService.checkIpLimit(
       undefined,

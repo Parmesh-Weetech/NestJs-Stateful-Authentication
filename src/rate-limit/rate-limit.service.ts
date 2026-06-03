@@ -139,7 +139,7 @@ export class RateLimitService {
         
         // tokens earned since last refill
         const refillTokens =
-            (elapsedMs / 60000) *
+            (elapsedMs / RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS) *
             RATE_LIMIT.TOKEN_BUCKET.REFILL_PER_MINUTE;
 
         tokens = Math.min(
