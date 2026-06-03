@@ -11,7 +11,7 @@ export class RateLimitGuard implements CanActivate {
     const ip = request.headers['x-forwarded-for']?.split(',')[0] || request.ip;
     // const deviceId = request.headers['x-device-id'];
 
-    const result = await this.rateLimitService.checkIpLimit(
+    const result = await this.rateLimitService.checkIpSlidingWindowV2(
       'ip',
       undefined,
       ip,

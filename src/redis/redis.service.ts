@@ -31,6 +31,13 @@ export class RedisService
         await this.client.quit();
     }
 
+    getClient(): RedisClientType {
+        if (!this.client) {
+            this.client = createRedisClient();
+        }
+        return this.client;
+    }
+
     buildRedisSessionKey(sessionId: string): string {
         return `sess:${sessionId}`;
     }
