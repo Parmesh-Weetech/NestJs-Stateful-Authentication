@@ -43,10 +43,11 @@ export class RedisService
     }
 
     buildRedisRateLimitKey(
-        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket',
+        type: 'ip' | 'user' | 'fingerprint' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket' | 'device:bucket' | 'fingerprint:bucket',
         userId?: string,
         ip?: string,
-        deviceId?: string
+        deviceId?: string,
+        fingerPrintId?: string
     ): string {
         switch (type) {
             case 'ip':
@@ -59,11 +60,11 @@ export class RedisService
                     throw new Error('User ID is required for user rate limit');
                 }
                 return `rate-limit:user:${userId}`;
-            case 'ip:user':
-                if (!ip || !userId) {
-                    throw new Error('IP and user ID are required for IP:User rate limit');
+            case 'fingerprint':
+                if (!fingerPrintId) {
+                    throw new Error('Fingerprint is required for fingerprint rate limit');
                 }
-                return `rate-limit:ip:${ip}:user:${userId}`;
+                return `rate-limit:fingerprint:${fingerPrintId}`;
             case 'device':
                 if (!deviceId) {
                     throw new Error('Device ID is required for device rate limit');
@@ -84,6 +85,16 @@ export class RedisService
                     throw new Error('User ID is required for User:Bucket rate limit');
                 }
                 return `rate-limit:user:bucket:${userId}`;
+            case 'device:bucket':
+                if (!deviceId) {
+                    throw new Error('Device ID is required for Device:Bucket rate limit');
+                }
+                return `rate-limit:device:bucket:${deviceId}`;
+            case 'fingerprint:bucket':
+                if (!fingerPrintId) {
+                    throw new Error('Fingerprint ID is required for Fingerprint:Bucket rate limit');
+                }
+                return `rate-limit:fingerprint:bucket:${fingerPrintId}`;
             default:
                 throw new Error('Invalid rate limit type');
         }

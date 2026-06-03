@@ -17,7 +17,6 @@ export class RateLimitService {
         ip: string,
     ) {
         const tokenBucketCheck = await this.checkTokenBucketLimitForIP(
-            'ip:bucket',
             ip,
         );
 
@@ -26,7 +25,6 @@ export class RateLimitService {
         }
 
         const slidingWindowCheck = await this.checkIpSlidingWindowV2(
-            'ip',
             ip
         );
 
@@ -37,7 +35,6 @@ export class RateLimitService {
         userId: string
     ) {
         const tokenBucketCheck = await this.checkTokenBucketLimitForUser(
-            'user:bucket',
             userId,
         );
 
@@ -46,58 +43,16 @@ export class RateLimitService {
         }
 
         const slidingWindowCheck = await this.checkUserSlidingWindow(
-            'user',
             userId
         );
 
         return slidingWindowCheck;
     }
 
-    async checkUserSlidingWindow(
-        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket',
-        userId: string
-    ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, userId, undefined, undefined);
-
-        const now = Date.now();
-
-        const oldestAllowed = now - RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS;
-
-        await this.redis.zRemRangeByScore(
-            key,
-            0,
-            oldestAllowed,
-        );
-
-        const count = await this.redis.zCard(key);
-
-        if (count >= RATE_LIMIT.USER.LIMIT) {
-            return {
-                allowed: false,
-                currentCount: count,
-                remaining: Math.max(0, RATE_LIMIT.USER.LIMIT - count),
-            };
-        }
-
-        await this.redis.zAdd(key, {
-            score: now,
-            value: `${now}-${Math.random()}`,
-        });
-
-        await this.redis.expire(key, 60);
-
-        return {
-            allowed: count <= RATE_LIMIT.USER.LIMIT,
-            currentCount: count,
-            remaining: Math.max(0, RATE_LIMIT.USER.LIMIT - count),
-        };
-    }
-
     async checkIpSlidingWindowV1(
-        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket',
         ip: string,
     ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, undefined, ip, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('ip', undefined, ip, undefined, undefined);
 
         const now = Date.now();
 
@@ -126,10 +81,9 @@ export class RateLimitService {
     }
 
     async checkIpSlidingWindowV2(
-        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket',
         ip: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, undefined, ip, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('ip', undefined, ip, undefined, undefined);
 
         const now = Date.now();
 
@@ -165,11 +119,49 @@ export class RateLimitService {
         };
     }
 
+    async checkUserSlidingWindow(
+        userId: string
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey('user', userId, undefined, undefined, undefined);
+
+        const now = Date.now();
+
+        const oldestAllowed = now - RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS;
+
+        await this.redis.zRemRangeByScore(
+            key,
+            0,
+            oldestAllowed,
+        );
+
+        const count = await this.redis.zCard(key);
+
+        if (count >= RATE_LIMIT.USER.LIMIT) {
+            return {
+                allowed: false,
+                currentCount: count,
+                remaining: Math.max(0, RATE_LIMIT.USER.LIMIT - count),
+            };
+        }
+
+        await this.redis.zAdd(key, {
+            score: now,
+            value: `${now}-${Math.random()}`,
+        });
+
+        await this.redis.expire(key, 60);
+
+        return {
+            allowed: count <= RATE_LIMIT.USER.LIMIT,
+            currentCount: count,
+            remaining: Math.max(0, RATE_LIMIT.USER.LIMIT - count),
+        };
+    }
+
     async checkTokenBucketLimitForIP(
-        type: 'ip:bucket',
         ip: string,
     ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, undefined, ip, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('ip:bucket', undefined, ip, undefined, undefined);
 
         const now = Date.now();
 
@@ -219,10 +211,9 @@ export class RateLimitService {
     }
 
     async checkTokenBucketLimitForUser(
-        type: 'user:bucket',
         userId: string,
     ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, userId, undefined, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('user:bucket', userId, undefined, undefined, undefined);
 
         const now = Date.now();
 
@@ -269,5 +260,220 @@ export class RateLimitService {
             allowed: tokens >= 1,
             tokensRemaining: tokens,
         };
+    }
+
+    async checkTokenBucketLimitForDevice(
+        deviceId: string
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey('device:bucket', undefined, undefined, deviceId, undefined);
+
+        const now = Date.now();
+
+        const bucket = await this.redis.hGetAll(key);
+
+        let tokens = bucket.tokens
+            ? Number(bucket.tokens)
+            : RATE_LIMIT.DEVICE_TOKEN_BUCKET.BUCKET_SIZE;
+
+        let lastRefill = bucket.lastRefill
+            ? Number(bucket.lastRefill)
+            : now;
+
+        const elapsedMs = now - lastRefill;
+
+        // tokens earned since last refill
+        const refillTokens =
+            (elapsedMs / RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS) *
+            RATE_LIMIT.DEVICE_TOKEN_BUCKET.REFILL_PER_MINUTE;
+
+        tokens = Math.min(
+            RATE_LIMIT.DEVICE_TOKEN_BUCKET.BUCKET_SIZE,
+            tokens + refillTokens,
+        );
+
+        if (tokens < 1) {
+            return {
+                allowed: false,
+                tokensRemaining: tokens,
+            };
+        }
+
+        // consume token
+        tokens -= 1;
+
+        await this.redis.hSet(key, {
+            tokens: tokens.toString(),
+            lastRefill: now.toString(),
+        });
+
+        await this.redis.expire(key, 120);
+
+        return {
+            allowed: tokens >= 1,
+            tokensRemaining: tokens,
+        };
+    }
+
+    async checkSlidingWindowRateLimitForDevice(
+        deviceId: string
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey('device', undefined, undefined, deviceId, undefined);
+
+        const now = Date.now();
+
+        const oldestAllowed = now - RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS;
+
+        await this.redis.zRemRangeByScore(
+            key,
+            0,
+            oldestAllowed,
+        );
+
+        const count = await this.redis.zCard(key);
+
+        if (count >= RATE_LIMIT.DEVICE.LIMIT) {
+            return {
+                allowed: false,
+                currentCount: count,
+                remaining: Math.max(0, RATE_LIMIT.DEVICE.LIMIT - count),
+            };
+        }
+
+        await this.redis.zAdd(key, {
+            score: now,
+            value: `${now}-${Math.random()}`,
+        });
+
+        await this.redis.expire(key, RATE_LIMIT.DEVICE.TTL_SECONDS);
+
+        return {
+            allowed: count <= RATE_LIMIT.DEVICE.LIMIT,
+            currentCount: count,
+            remaining: Math.max(0, RATE_LIMIT.DEVICE.LIMIT - count),
+        };
+    }
+
+    async checkTokenBucketLimitForFingerprint(
+        fingerprintId: string
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey('fingerprint:bucket', undefined, undefined, undefined, fingerprintId);
+
+        const now = Date.now();
+        
+        const bucket = await this.redis.hGetAll(key);
+
+        let tokens = bucket.tokens
+            ? Number(bucket.tokens)
+            : RATE_LIMIT.FINGERPRINT_TOKEN_BUCKET.BUCKET_SIZE;
+
+        let lastRefill = bucket.lastRefill
+            ? Number(bucket.lastRefill)
+            : now;
+
+        const elapsedMs = now - lastRefill;
+
+        // tokens earned since last refill
+        const refillTokens =
+            (elapsedMs / RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS) *
+            RATE_LIMIT.FINGERPRINT_TOKEN_BUCKET.REFILL_PER_MINUTE;
+
+        tokens = Math.min(
+            RATE_LIMIT.FINGERPRINT_TOKEN_BUCKET.BUCKET_SIZE,
+            tokens + refillTokens,
+        );
+
+        if (tokens < 1) {
+            return {
+                allowed: false,
+                tokensRemaining: tokens,
+            };
+        }
+
+        // consume token
+        tokens -= 1;
+
+        await this.redis.hSet(key, {
+            tokens: tokens.toString(),
+            lastRefill: now.toString(),
+        });
+
+        await this.redis.expire(key, 120);
+
+        return {
+            allowed: tokens >= 1,
+            tokensRemaining: tokens,
+        };
+    }
+
+    async checkSlidingWindowForFingerprint(
+        fingerprintId: string
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey('fingerprint', undefined, undefined, undefined, fingerprintId);
+
+        const now = Date.now();
+
+        const oldestAllowed = now - RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS;
+
+        await this.redis.zRemRangeByScore(
+            key,
+            0,
+            oldestAllowed,
+        );
+
+        const count = await this.redis.zCard(key);
+
+        if (count >= RATE_LIMIT.FINGERPRINT.LIMIT) {
+            return {
+                allowed: false,
+                currentCount: count,
+                remaining: Math.max(0, RATE_LIMIT.FINGERPRINT.LIMIT - count),
+            };
+        }
+
+        await this.redis.zAdd(key, {
+            score: now,
+            value: `${now}-${Math.random()}`,
+        });
+
+        await this.redis.expire(key, RATE_LIMIT.FINGERPRINT.TTL_SECONDS);
+
+        return {
+            allowed: count <= RATE_LIMIT.FINGERPRINT.LIMIT,
+            currentCount: count,
+            remaining: Math.max(0, RATE_LIMIT.FINGERPRINT.LIMIT - count),
+        };
+    }
+
+    async checkDeviceProtection(
+        deviceId: string,
+        fingerPrintId: string
+    ) {
+        const deviceBucket =
+            await this.checkTokenBucketLimitForDevice(
+                deviceId,
+            );
+
+        if (!deviceBucket.allowed) {
+            return deviceBucket;
+        }
+
+        const deviceSliding =
+            await this.checkSlidingWindowRateLimitForDevice(deviceId);
+
+        if (!deviceSliding.allowed) {
+            return deviceSliding;
+        }
+
+        const fingerprintBucket =
+            await this.checkTokenBucketLimitForFingerprint(fingerPrintId);
+
+        if (!fingerprintBucket.allowed) {
+            return fingerprintBucket;
+        }
+
+        const fingerprintSliding =
+            await this.checkSlidingWindowForFingerprint(fingerPrintId);
+
+        return fingerprintSliding;
     }
 }

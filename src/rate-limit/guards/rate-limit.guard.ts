@@ -16,6 +16,7 @@ export class RateLimitGuard implements CanActivate {
     const user = request.user;
     const ip = request.headers['x-forwarded-for']?.split(',')[0] || request.ip;
     const deviceId = request.headers['x-device-id'];
+    const fingerPrintId = request.headers['x-fingerprint'];
 
     const ipResult = await this.rateLimitService.checkIpLimit(
       ip,
@@ -25,7 +26,12 @@ export class RateLimitGuard implements CanActivate {
       user.id,
     )
 
-    if (!ipResult.allowed || !userResult.allowed) {
+    const deviceProtectionResult = await this.rateLimitService.checkDeviceProtection(
+      deviceId,
+      fingerPrintId
+    )
+
+    if (!ipResult.allowed || !userResult.allowed || !deviceProtectionResult.allowed) {
       throw new HttpException(
         {
           statusCode: 429,
