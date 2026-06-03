@@ -8,7 +8,7 @@ export class RateLimitService {
         private readonly redisService: RedisService,
     ) { }
 
-    async checkIpLimit(
+    async checkFixedWindowRateLimit(
         type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device',
         userId?: string,
         ip?: string,
