@@ -14,15 +14,11 @@ export class RateLimitService {
     }
 
     async checkIpLimit(
-        userId?: string,
-        ip?: string,
-        deviceId?: string,
+        ip: string,
     ) {
-        const tokenBucketCheck = await this.checkTokenBucketLimit(
+        const tokenBucketCheck = await this.checkTokenBucketLimitForIP(
             'ip:bucket',
-            userId,
             ip,
-            deviceId
         );
 
         if (!tokenBucketCheck.allowed) {
@@ -31,21 +27,77 @@ export class RateLimitService {
 
         const slidingWindowCheck = await this.checkIpSlidingWindowV2(
             'ip',
-            userId,
-            ip,
-            deviceId
+            ip
         );
 
         return slidingWindowCheck;
     }
 
-    async checkIpSlidingWindowV1(
-        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket',
-        userId?: string,
-        ip?: string,
-        deviceId?: string,
+    async checkUserLimit(
+        userId: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, userId, ip, deviceId);
+        const tokenBucketCheck = await this.checkTokenBucketLimitForUser(
+            'user:bucket',
+            userId,
+        );
+
+        if (!tokenBucketCheck.allowed) {
+            return tokenBucketCheck;
+        }
+
+        const slidingWindowCheck = await this.checkUserSlidingWindow(
+            'user',
+            userId
+        );
+
+        return slidingWindowCheck;
+    }
+
+    async checkUserSlidingWindow(
+        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket',
+        userId: string
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey(type, userId, undefined, undefined);
+
+        const now = Date.now();
+
+        const oldestAllowed = now - RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS;
+
+        await this.redis.zRemRangeByScore(
+            key,
+            0,
+            oldestAllowed,
+        );
+
+        const count = await this.redis.zCard(key);
+
+        if (count >= RATE_LIMIT.USER.LIMIT) {
+            return {
+                allowed: false,
+                currentCount: count,
+                remaining: Math.max(0, RATE_LIMIT.USER.LIMIT - count),
+            };
+        }
+
+        await this.redis.zAdd(key, {
+            score: now,
+            value: `${now}-${Math.random()}`,
+        });
+
+        await this.redis.expire(key, 60);
+
+        return {
+            allowed: count <= RATE_LIMIT.USER.LIMIT,
+            currentCount: count,
+            remaining: Math.max(0, RATE_LIMIT.USER.LIMIT - count),
+        };
+    }
+
+    async checkIpSlidingWindowV1(
+        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket',
+        ip: string,
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey(type, undefined, ip, undefined);
 
         const now = Date.now();
 
@@ -74,12 +126,10 @@ export class RateLimitService {
     }
 
     async checkIpSlidingWindowV2(
-        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket',
-        userId?: string,
-        ip?: string,
-        deviceId?: string,
+        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket',
+        ip: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, userId, ip, deviceId);
+        const key = this.redisService.buildRedisRateLimitKey(type, undefined, ip, undefined);
 
         const now = Date.now();
 
@@ -115,13 +165,11 @@ export class RateLimitService {
         };
     }
 
-    async checkTokenBucketLimit(
-        type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket',
-        userId?: string,
-        ip?: string,
-        deviceId?: string,
+    async checkTokenBucketLimitForIP(
+        type: 'ip:bucket',
+        ip: string,
     ) {
-        const key = this.redisService.buildRedisRateLimitKey(type, userId, ip, deviceId);
+        const key = this.redisService.buildRedisRateLimitKey(type, undefined, ip, undefined);
 
         const now = Date.now();
 
@@ -129,7 +177,7 @@ export class RateLimitService {
 
         let tokens = bucket.tokens
             ? Number(bucket.tokens)
-            : RATE_LIMIT.TOKEN_BUCKET.BUCKET_SIZE;
+            : RATE_LIMIT.IP_TOKEN_BUCKET.BUCKET_SIZE;
 
         let lastRefill = bucket.lastRefill
             ? Number(bucket.lastRefill)
@@ -140,10 +188,63 @@ export class RateLimitService {
         // tokens earned since last refill
         const refillTokens =
             (elapsedMs / RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS) *
-            RATE_LIMIT.TOKEN_BUCKET.REFILL_PER_MINUTE;
+            RATE_LIMIT.IP_TOKEN_BUCKET.REFILL_PER_MINUTE;
 
         tokens = Math.min(
-            RATE_LIMIT.TOKEN_BUCKET.BUCKET_SIZE,
+            RATE_LIMIT.IP_TOKEN_BUCKET.BUCKET_SIZE,
+            tokens + refillTokens,
+        );
+
+        if (tokens < 1) {
+            return {
+                allowed: false,
+                tokensRemaining: tokens,
+            };
+        }
+
+        // consume token
+        tokens -= 1;
+
+        await this.redis.hSet(key, {
+            tokens: tokens.toString(),
+            lastRefill: now.toString(),
+        });
+
+        await this.redis.expire(key, 120);
+
+        return {
+            allowed: tokens >= 1,
+            tokensRemaining: tokens,
+        };
+    }
+
+    async checkTokenBucketLimitForUser(
+        type: 'user:bucket',
+        userId: string,
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey(type, userId, undefined, undefined);
+
+        const now = Date.now();
+
+        const bucket = await this.redis.hGetAll(key);
+
+        let tokens = bucket.tokens
+            ? Number(bucket.tokens)
+            : RATE_LIMIT.USER_TOKEN_BUCKET.BUCKET_SIZE;
+
+        let lastRefill = bucket.lastRefill
+            ? Number(bucket.lastRefill)
+            : now;
+
+        const elapsedMs = now - lastRefill;
+
+        // tokens earned since last refill
+        const refillTokens =
+            (elapsedMs / RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS) *
+            RATE_LIMIT.USER_TOKEN_BUCKET.REFILL_PER_MINUTE;
+
+        tokens = Math.min(
+            RATE_LIMIT.USER_TOKEN_BUCKET.BUCKET_SIZE,
             tokens + refillTokens,
         );
 

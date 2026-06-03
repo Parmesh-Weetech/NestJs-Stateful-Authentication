@@ -6,8 +6,16 @@ export const RATE_LIMIT = {
     SLIDING_WINDOW: {
         WINDOW_MS: parseInt(process.env.WINDOW_MS || '60000'),
     },
-    TOKEN_BUCKET: {
-        BUCKET_SIZE: parseInt(process.env.TOKEN_BUCKET_SIZE || '20'),
-        REFILL_PER_MINUTE: parseInt(process.env.REFILL_PER_MINUTE || '20'),
+    IP_TOKEN_BUCKET: {
+        BUCKET_SIZE: parseInt(process.env.IP_TOKEN_BUCKET_SIZE || '10'),
+        REFILL_PER_MINUTE: parseInt(process.env.IP_REFILL_PER_MINUTE || '10'),
+    },
+    USER_TOKEN_BUCKET: {
+        BUCKET_SIZE: parseInt(process.env.USER_TOKEN_BUCKET_SIZE || '20'),
+        REFILL_PER_MINUTE: parseInt(process.env.USER_REFILL_PER_MINUTE || '20'),
+    },
+    USER: {
+        LIMIT: parseInt(process.env.USER_LIMIT || '20'),
+        TTL_SECONDS: parseInt(process.env.USER_TTL_SECONDS || '60'),
     }
 };

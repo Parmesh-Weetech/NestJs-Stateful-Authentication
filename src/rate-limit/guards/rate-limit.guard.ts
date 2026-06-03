@@ -7,17 +7,25 @@ export class RateLimitGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+    const endpoint = request.url;
+
+    if (endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register')) {
+      return true;
+    }
+
     const user = request.user;
     const ip = request.headers['x-forwarded-for']?.split(',')[0] || request.ip;
     const deviceId = request.headers['x-device-id'];
 
-    const result = await this.rateLimitService.checkIpLimit(
-      undefined,
+    const ipResult = await this.rateLimitService.checkIpLimit(
       ip,
-      undefined
     );
 
-    if (!result.allowed) {
+    const userResult = await this.rateLimitService.checkUserLimit(
+      user.id,
+    )
+
+    if (!ipResult.allowed || !userResult.allowed) {
       throw new HttpException(
         {
           statusCode: 429,
