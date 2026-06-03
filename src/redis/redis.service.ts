@@ -42,7 +42,7 @@ export class RedisService
         return `sess:${sessionId}`;
     }
 
-    buildRedisRateLimitKey(type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device', userId?: string, ip?: string, deviceId?: string): string {
+    buildRedisRateLimitKey(type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device' | 'ip:bucket', userId?: string, ip?: string, deviceId?: string): string {
         switch (type) {
             case 'ip':
                 if (!ip) {
@@ -69,6 +69,11 @@ export class RedisService
                     throw new Error('User ID and device ID are required for User:Device rate limit');
                 }
                 return `rate-limit:user:${userId}:device:${deviceId}`;
+            case 'ip:bucket':
+                if (!ip) {
+                    throw new Error('IP is required for IP:Bucket rate limit');
+                }
+                return `rate-limit:ip:bucket:${ip}`;
             default:
                 throw new Error('Invalid rate limit type');
         }
