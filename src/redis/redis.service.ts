@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import { createRedisClient } from '../common/helper/createRedisClient';
+import { createRedisClient } from './helper/createRedisClient';
 import { getExpiredTime } from '../common/helper/getExpiredTime';
 
 import type { RedisClientType } from 'redis';
@@ -33,6 +33,38 @@ export class RedisService
 
     buildRedisSessionKey(sessionId: string): string {
         return `sess:${sessionId}`;
+    }
+
+    buildRedisRateLimitKey(type: 'ip' | 'user' | 'ip:user' | 'device' | 'user:device', userId?: string, ip?: string, deviceId?: string): string {
+        switch (type) {
+            case 'ip':
+                if (!ip) {
+                    throw new Error('IP is required for IP rate limit');
+                }
+                return `rate-limit:ip:${ip}`;
+            case 'user':
+                if (!userId) {
+                    throw new Error('User ID is required for user rate limit');
+                }
+                return `rate-limit:user:${userId}`;
+            case 'ip:user':
+                if (!ip || !userId) {
+                    throw new Error('IP and user ID are required for IP:User rate limit');
+                }
+                return `rate-limit:ip:${ip}:user:${userId}`;
+            case 'device':
+                if (!deviceId) {
+                    throw new Error('Device ID is required for device rate limit');
+                }
+                return `rate-limit:device:${deviceId}`;
+            case 'user:device':
+                if (!userId || !deviceId) {
+                    throw new Error('User ID and device ID are required for User:Device rate limit');
+                }
+                return `rate-limit:user:${userId}:device:${deviceId}`;
+            default:
+                throw new Error('Invalid rate limit type');
+        }
     }
 
     async refreshRedisSession(sessionId: string): Promise<void> {
