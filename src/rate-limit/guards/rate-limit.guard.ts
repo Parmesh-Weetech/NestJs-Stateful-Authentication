@@ -25,7 +25,7 @@ export class RateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
 
     const user = request.user;
-    const ip = request.headers['x-forwarded-for']?.split(',')[0] || request.ip;
+    const ip = await this.authService.getPublicIp() || request.ip;
     const deviceId = request.deviceId;
     const fingerPrintId = request.deviceFingerprint;
 

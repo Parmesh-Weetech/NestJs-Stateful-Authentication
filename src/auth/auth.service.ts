@@ -42,7 +42,7 @@ export class AuthService {
 
         const hashedPassword = await bcrypt.hash(
             password,
-            Number(process.env.BCRYPT_SALT) || 10,
+            Number(process.env.BCRYPT_SALT) || 12,
         );
 
         return this.userService.create({
