@@ -21,8 +21,6 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const redisService = app.get(RedisService);
 
-  // app.set('trust proxy', 1);
-
   app.use(helmet());
 
   app.enableCors({
