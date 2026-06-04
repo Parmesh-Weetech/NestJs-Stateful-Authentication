@@ -87,6 +87,9 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^21.0.2
         version: 21.0.2
+      '@commitlint/lint':
+        specifier: ^21.0.2
+        version: 21.0.2
       '@eslint/eslintrc':
         specifier: ^3.2.0
         version: 3.3.5
