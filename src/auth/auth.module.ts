@@ -19,6 +19,8 @@ import { SessionSerializer } from './session.serializer';
 import { UserSession } from './entities/user-session.entity';
 import { RedisModule } from 'src/redis/redis.module';
 import { DeviceModule } from 'src/device/device.module';
+import { RateLimitModule } from 'src/rate-limit/rate-limit.module';
+import { forwardRef } from '@nestjs/common';
 
 @Module({
   imports: [
@@ -33,7 +35,8 @@ import { DeviceModule } from 'src/device/device.module';
     ]),
 
     RedisModule,
-    DeviceModule
+    DeviceModule,
+    forwardRef(() => RateLimitModule)
   ],
 
   controllers: [AuthController],

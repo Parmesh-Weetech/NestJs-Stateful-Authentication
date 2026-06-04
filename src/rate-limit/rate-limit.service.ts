@@ -590,4 +590,41 @@ export class RateLimitService {
             remaining: Math.max(0, RATE_LIMIT.SESSION.LIMIT - count),
         };
     }
+
+    async checkSlidingWindowGeneric(key: string, limit: number, windowMs: number) {
+        const now = Date.now();
+        const oldestAllowed = now - windowMs;
+
+        await this.redis.zRemRangeByScore(key, 0, oldestAllowed);
+        const count = await this.redis.zCard(key);
+
+        if (count >= limit) {
+            return { allowed: false, currentCount: count, remaining: 0 };
+        }
+
+        await this.redis.zAdd(key, { score: now, value: `${now}-${Math.random()}` });
+        await this.redis.expire(key, Math.ceil(windowMs / 1000));
+
+        return { allowed: true, currentCount: count + 1, remaining: limit - (count + 1) };
+    }
+
+    async checkLoginLimit(email: string, ip: string, deviceId: string) {
+        const limit = RATE_LIMIT.LOGIN.LIMIT;
+        const windowMs = RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS;
+
+        const emailKey = this.redisService.buildRedisRateLimitKey('login:email', email);
+        const ipKey = this.redisService.buildRedisRateLimitKey('login:ip', undefined, ip);
+        const deviceKey = this.redisService.buildRedisRateLimitKey('login:device', undefined, undefined, deviceId);
+
+        const emailResult = await this.checkSlidingWindowGeneric(emailKey, limit, windowMs);
+        if (!emailResult.allowed) return { allowed: false, reason: 'Too many login attempts' };
+
+        const ipResult = await this.checkSlidingWindowGeneric(ipKey, limit, windowMs);
+        if (!ipResult.allowed) return { allowed: false, reason: 'Too many login attempts' };
+
+        const deviceResult = await this.checkSlidingWindowGeneric(deviceKey, limit, windowMs);
+        if (!deviceResult.allowed) return { allowed: false, reason: 'Too many login attempts' };
+
+        return { allowed: true };
+    }
 }

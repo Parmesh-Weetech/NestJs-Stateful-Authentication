@@ -22,6 +22,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthenticatedGuard } from './guards/authenticated.guard';
 import { DeviceSignatureCheckGuard } from 'src/device/guards/device-signature-check.guard';
 import { Public } from 'src/common/decorators/public.decorator';
+import { LoginRateLimitGuard } from 'src/rate-limit/guards/login-rate-limit.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -41,7 +42,7 @@ export class AuthController {
     }
 
     @Public()
-    @UseGuards(LocalAuthGuard)
+    @UseGuards(LoginRateLimitGuard, LocalAuthGuard)
     @Post('login')
     async login(
         @Req() req: Request,
