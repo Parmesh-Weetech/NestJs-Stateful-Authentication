@@ -14,6 +14,8 @@ import { SessionService } from './session.service';
 import { RedisService } from 'src/redis/redis.service';
 import { getExpiredTime } from 'src/common/helper/getExpiredTime';
 import { createHmac } from 'node:crypto';
+import { DeviceMetadataService } from 'src/device/device-metadata.service';
+import { SessionInvalidationReason } from './types/invalidation_reason.type';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +23,7 @@ export class AuthService {
         private readonly userService: UserService,
         private readonly sessionService: SessionService,
         private readonly redisService: RedisService,
+        private readonly deviceMetadataService: DeviceMetadataService
     ) {}
 
     async register(
@@ -73,8 +76,19 @@ export class AuthService {
         );
 
         if (previousSession) {
-            await this.sessionService.invalidateSessionBySessionId(previousSession.sessionId);
+            await this.sessionService.invalidateSessionBySessionId(previousSession.sessionId, SessionInvalidationReason.RE_LOGIN);
             await this.redisService.deleteRedisSession(previousSession.sessionId);
+        }
+
+        const publicIp = await this.getPublicIp();
+
+        const deviceMetadata = await this.deviceMetadataService.extract(
+            req.hostname === 'localhost' ? publicIp : (req.ip! ?? req.socket.remoteAddress!),
+            req.headers['user-agent'] as string
+        );
+
+        if (!deviceMetadata) {
+            throw new BadRequestException('Device not recognized. Please login again.');
         }
 
         await new Promise<void>((resolve, reject) => {
@@ -97,11 +111,23 @@ export class AuthService {
             userId: (req.user as any)?.id,
             sessionId: req.sessionID,
             deviceId,
-            ipAddress: req.ip,
+            ipAddress: req.hostname === 'localhost' ? publicIp : (req.ip! ?? req.socket.remoteAddress!),
             userAgent: req.headers['user-agent'],
             isValid: true,
             expiresAt: new Date(Date.now() + expiredTimes.ms),
             lastActivityAt: new Date(),
+            asn: deviceMetadata.geoLocationInfo.asn,
+            browser: deviceMetadata.userAgentInfo.browser,
+            deviceType: deviceMetadata.userAgentInfo.deviceType,
+            os: deviceMetadata.userAgentInfo.os,
+            city: deviceMetadata.geoLocationInfo.city,
+            country: deviceMetadata.geoLocationInfo.country,
+            state: deviceMetadata.geoLocationInfo.state,
+            browserVersion: deviceMetadata.userAgentInfo.browserVersion,
+            continent: deviceMetadata.geoLocationInfo.continent,
+            deviceName: deviceMetadata.userAgentInfo.deviceName,
+            organization: deviceMetadata.geoLocationInfo.organization,
+            osVersion: deviceMetadata.userAgentInfo.osVersion,
         });
 
         return {
@@ -134,6 +160,7 @@ export class AuthService {
         if (existingSession) {
             await this.sessionService.invalidateSessionBySessionId(
                 existingSession.sessionId,
+                SessionInvalidationReason.LOGOUT
             );
 
             await this.redisService.deleteRedisSession(existingSession.sessionId);
@@ -193,6 +220,30 @@ export class AuthService {
         }
 
         return user;
+    }
+
+    async getPublicIp() {
+        const response = await fetch(
+            'https://api.ipify.org?format=json',
+        );
+
+        const data = await response.json();
+
+        return data.ip;
+    }
+
+    async updateDeviceFingerprint(
+        sessionId: string,
+        deviceFingerprint: string
+    ) {
+        await this.sessionService.updateDeviceFingerprint(sessionId, deviceFingerprint);
+    }
+
+    async checkDeviceFingerprintExists(
+        sessionId: string,
+        userId: string
+    ) {
+        return await this.sessionService.checkDeviceFingerprintExists(sessionId, userId);
     }
 }
 

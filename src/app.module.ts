@@ -18,6 +18,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RateLimitGuard } from './rate-limit/guards/rate-limit.guard';
 import { DeviceModule } from './device/device.module';
 import { DeviceSignatureCheckGuard } from './device/guards/device-signature-check.guard';
+import { GeoModule } from './geo/geo.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { DeviceSignatureCheckGuard } from './device/guards/device-signature-chec
     RedisModule,
     RateLimitModule,
     DeviceModule,
+    GeoModule,
   ],
   providers: [
     {
