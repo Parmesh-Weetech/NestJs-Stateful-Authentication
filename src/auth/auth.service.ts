@@ -13,7 +13,7 @@ import { UserService } from '../user/user.service';
 import { SessionService } from './session.service';
 import { RedisService } from 'src/redis/redis.service';
 import { getExpiredTime } from 'src/common/helper/getExpiredTime';
-import { createHmac } from 'node:crypto';
+import { DeviceService } from 'src/device/device.service';
 import { DeviceMetadataService } from 'src/device/device-metadata.service';
 import { SessionInvalidationReason } from './types/invalidation_reason.type';
 
@@ -23,7 +23,8 @@ export class AuthService {
         private readonly userService: UserService,
         private readonly sessionService: SessionService,
         private readonly redisService: RedisService,
-        private readonly deviceMetadataService: DeviceMetadataService
+        private readonly deviceMetadataService: DeviceMetadataService,
+        private readonly deviceService: DeviceService
     ) {}
 
     async register(
@@ -60,13 +61,7 @@ export class AuthService {
             );
         }
 
-        const signature = createHmac('sha256', process.env.FINGERPRINT_SECRET!)
-            .update(deviceId)
-            .digest('hex');
 
-        if(!signature) {
-            throw new BadRequestException('Cannot verify device');
-        }
 
         const user = req.user;
 
@@ -105,12 +100,15 @@ export class AuthService {
             });
         });
 
+        const signature = this.deviceService.generateSignature(deviceId, req.sessionID);
+
         const expiredTimes = getExpiredTime();
 
         await this.sessionService.createSession({
             userId: (req.user as any)?.id,
             sessionId: req.sessionID,
             deviceId,
+            deviceFingerprint: this.deviceService.generateFingerprint(deviceId, req.headers['user-agent'] as string),
             ipAddress: req.hostname === 'localhost' ? publicIp : (req.ip! ?? req.socket.remoteAddress!),
             userAgent: req.headers['user-agent'],
             isValid: true,

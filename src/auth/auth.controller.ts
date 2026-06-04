@@ -21,6 +21,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 
 import { AuthenticatedGuard } from './guards/authenticated.guard';
 import { DeviceSignatureCheckGuard } from 'src/device/guards/device-signature-check.guard';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +29,7 @@ export class AuthController {
         private readonly authService: AuthService,
     ) { }
 
+    @Public()
     @Post('register')
     async register(
         @Body() dto: RegisterDto,
@@ -38,6 +40,7 @@ export class AuthController {
         );
     }
 
+    @Public()
     @UseGuards(LocalAuthGuard)
     @Post('login')
     async login(

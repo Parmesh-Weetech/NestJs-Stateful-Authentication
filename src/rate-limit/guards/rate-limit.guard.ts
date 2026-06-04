@@ -1,21 +1,28 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { RateLimitService } from '../rate-limit.service';
+import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
   constructor(
     private readonly rateLimitService: RateLimitService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly reflector: Reflector
   ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const endpoint = request.url;
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-    if (endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register')) {
+    if (isPublic) {
       return true;
     }
+
+    const request = context.switchToHttp().getRequest();
 
     const user = request.user;
     const ip = request.headers['x-forwarded-for']?.split(',')[0] || request.ip;
@@ -49,12 +56,6 @@ export class RateLimitGuard implements CanActivate {
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
-    }
-
-    const checkFingerprintExists = await this.authService.checkDeviceFingerprintExists(request.sessionID, user.id);
-
-    if (!checkFingerprintExists) {
-      await this.authService.updateDeviceFingerprint(request.sessionID, fingerPrintId);
     }
 
     return true;
