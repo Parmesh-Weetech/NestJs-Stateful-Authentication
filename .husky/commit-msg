@@ -1,2 +1,2 @@
 #!/bin/sh
-npx --no-install commitlint --edit "$1"
+node .husky/commitlint-wrapper.js "$1"
