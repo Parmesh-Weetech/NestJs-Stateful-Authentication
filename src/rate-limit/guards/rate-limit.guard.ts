@@ -18,9 +18,6 @@ export class RateLimitGuard implements CanActivate {
     const deviceId = request.deviceId;
     const fingerPrintId = request.deviceFingerprint;
 
-    console.log('deviceId', deviceId);
-    console.log('fingerprint', fingerPrintId)
-
     const ipResult = await this.rateLimitService.checkIpLimit(
       ip,
     );
