@@ -49,10 +49,64 @@ export class RateLimitService {
         return slidingWindowCheck;
     }
 
+    async checkDeviceProtection(
+        deviceId: string,
+        fingerPrintId: string
+    ) {
+        const deviceBucket =
+            await this.checkTokenBucketLimitForDevice(
+                deviceId,
+            );
+
+        if (!deviceBucket.allowed) {
+            return deviceBucket;
+        }
+
+        const deviceSliding =
+            await this.checkSlidingWindowRateLimitForDevice(deviceId);
+
+        if (!deviceSliding.allowed) {
+            return deviceSliding;
+        }
+
+        const fingerprintBucket =
+            await this.checkTokenBucketLimitForFingerprint(fingerPrintId);
+
+        if (!fingerprintBucket.allowed) {
+            return fingerprintBucket;
+        }
+
+        const fingerprintSliding =
+            await this.checkSlidingWindowForFingerprint(fingerPrintId);
+
+        return fingerprintSliding;
+    }
+
+    async checkSessionLimit(
+        userId: string,
+        sessionId: string,
+    ) {
+        const tokenBucketCheck = await this.checkTokenBucketForSession(
+            userId,
+            sessionId,
+        );
+
+        if (!tokenBucketCheck.allowed) {
+            return tokenBucketCheck;
+        }
+
+        const slidingWindowCheck = await this.checkSlidingWindowForSession(
+            userId,
+            sessionId
+        );
+
+        return slidingWindowCheck;
+    }
+
     async checkIpSlidingWindowV1(
         ip: string,
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('ip', undefined, ip, undefined, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('ip', undefined, ip, undefined, undefined, undefined);
 
         const now = Date.now();
 
@@ -83,7 +137,7 @@ export class RateLimitService {
     async checkIpSlidingWindowV2(
         ip: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('ip', undefined, ip, undefined, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('ip', undefined, ip, undefined, undefined, undefined);
 
         const now = Date.now();
 
@@ -122,7 +176,7 @@ export class RateLimitService {
     async checkUserSlidingWindow(
         userId: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('user', userId, undefined, undefined, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('user', userId, undefined, undefined, undefined, undefined);
 
         const now = Date.now();
 
@@ -161,7 +215,7 @@ export class RateLimitService {
     async checkTokenBucketLimitForIP(
         ip: string,
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('ip:bucket', undefined, ip, undefined, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('ip:bucket', undefined, ip, undefined, undefined, undefined);
 
         const now = Date.now();
 
@@ -213,7 +267,7 @@ export class RateLimitService {
     async checkTokenBucketLimitForUser(
         userId: string,
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('user:bucket', userId, undefined, undefined, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('user:bucket', userId, undefined, undefined, undefined, undefined);
 
         const now = Date.now();
 
@@ -265,7 +319,7 @@ export class RateLimitService {
     async checkTokenBucketLimitForDevice(
         deviceId: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('device:bucket', undefined, undefined, deviceId, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('device:bucket', undefined, undefined, deviceId, undefined, undefined);
 
         const now = Date.now();
 
@@ -317,7 +371,7 @@ export class RateLimitService {
     async checkSlidingWindowRateLimitForDevice(
         deviceId: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('device', undefined, undefined, deviceId, undefined);
+        const key = this.redisService.buildRedisRateLimitKey('device', undefined, undefined, deviceId, undefined, undefined);
 
         const now = Date.now();
 
@@ -356,7 +410,7 @@ export class RateLimitService {
     async checkTokenBucketLimitForFingerprint(
         fingerprintId: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('fingerprint:bucket', undefined, undefined, undefined, fingerprintId);
+        const key = this.redisService.buildRedisRateLimitKey('fingerprint:bucket', undefined, undefined, undefined, fingerprintId, undefined);
 
         const now = Date.now();
         
@@ -408,7 +462,7 @@ export class RateLimitService {
     async checkSlidingWindowForFingerprint(
         fingerprintId: string
     ) {
-        const key = this.redisService.buildRedisRateLimitKey('fingerprint', undefined, undefined, undefined, fingerprintId);
+        const key = this.redisService.buildRedisRateLimitKey('fingerprint', undefined, undefined, undefined, fingerprintId, undefined);
 
         const now = Date.now();
 
@@ -444,36 +498,96 @@ export class RateLimitService {
         };
     }
 
-    async checkDeviceProtection(
-        deviceId: string,
-        fingerPrintId: string
+    async checkTokenBucketForSession(
+        userId: string,
+        sessionId: string
     ) {
-        const deviceBucket =
-            await this.checkTokenBucketLimitForDevice(
-                deviceId,
-            );
+        const key = this.redisService.buildRedisRateLimitKey('user:session:bucket', userId, undefined, undefined, undefined, sessionId);
 
-        if (!deviceBucket.allowed) {
-            return deviceBucket;
+        const now = Date.now();
+
+        const bucket = await this.redis.hGetAll(key);
+
+        let tokens = bucket.tokens
+            ? Number(bucket.tokens)
+            : RATE_LIMIT.SESSION_TOKEN_BUCKET.BUCKET_SIZE;
+
+        let lastRefill = bucket.lastRefill
+            ? Number(bucket.lastRefill)
+            : now;
+
+        const elapsedMs = now - lastRefill;
+
+        // tokens earned since last refill
+        const refillTokens =
+            (elapsedMs / RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS) *
+            RATE_LIMIT.SESSION_TOKEN_BUCKET.REFILL_PER_MINUTE;
+
+        tokens = Math.min(
+            RATE_LIMIT.SESSION_TOKEN_BUCKET.BUCKET_SIZE,
+            tokens + refillTokens,
+        );
+
+        if (tokens < 1) {
+            return {
+                allowed: false,
+                tokensRemaining: tokens,
+            };
         }
 
-        const deviceSliding =
-            await this.checkSlidingWindowRateLimitForDevice(deviceId);
+        // consume token
+        tokens -= 1;
 
-        if (!deviceSliding.allowed) {
-            return deviceSliding;
+        await this.redis.hSet(key, {
+            tokens: tokens.toString(),
+            lastRefill: now.toString(),
+        });
+
+        await this.redis.expire(key, 120);
+
+        return {
+            allowed: tokens >= 1,
+            tokensRemaining: tokens,
+        };
+    }
+
+    async checkSlidingWindowForSession(
+        userId: string,
+        sessionId: string
+    ) {
+        const key = this.redisService.buildRedisRateLimitKey('user:session', userId, undefined, undefined, undefined, sessionId);
+
+        const now = Date.now();
+
+        const oldestAllowed = now - RATE_LIMIT.SLIDING_WINDOW.WINDOW_MS;
+
+        await this.redis.zRemRangeByScore(
+            key,
+            0,
+            oldestAllowed,
+        );
+
+        const count = await this.redis.zCard(key);
+
+        if (count >= RATE_LIMIT.SESSION.LIMIT) {
+            return {
+                allowed: false,
+                currentCount: count,
+                remaining: Math.max(0, RATE_LIMIT.SESSION.LIMIT - count),
+            };
         }
 
-        const fingerprintBucket =
-            await this.checkTokenBucketLimitForFingerprint(fingerPrintId);
+        await this.redis.zAdd(key, {
+            score: now,
+            value: `${now}-${Math.random()}`,
+        });
 
-        if (!fingerprintBucket.allowed) {
-            return fingerprintBucket;
-        }
+        await this.redis.expire(key, RATE_LIMIT.SESSION.TTL_SECONDS);
 
-        const fingerprintSliding =
-            await this.checkSlidingWindowForFingerprint(fingerPrintId);
-
-        return fingerprintSliding;
+        return {
+            allowed: count <= RATE_LIMIT.SESSION.LIMIT,
+            currentCount: count,
+            remaining: Math.max(0, RATE_LIMIT.SESSION.LIMIT - count),
+        };
     }
 }

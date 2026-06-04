@@ -31,7 +31,12 @@ export class RateLimitGuard implements CanActivate {
       fingerPrintId
     )
 
-    if (!ipResult.allowed || !userResult.allowed || !deviceProtectionResult.allowed) {
+    const sessionResult = await this.rateLimitService.checkSessionLimit(
+      user.id,
+      request.session.id
+    )
+
+    if (!ipResult.allowed || !userResult.allowed || !deviceProtectionResult.allowed || !sessionResult.allowed) {
       throw new HttpException(
         {
           statusCode: 429,
