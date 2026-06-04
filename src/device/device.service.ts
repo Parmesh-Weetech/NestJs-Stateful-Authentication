@@ -7,18 +7,20 @@ export class DeviceService {
 
     generateSignature(
         deviceId: string,
+        sessionId: string,
     ): string {
         return createHmac('sha256', this.secret)
-            .update(deviceId)
+            .update(`${deviceId}:${sessionId}`)
             .digest('hex');
     }
 
     verifySignature(
         deviceId: string,
+        sessionId: string,
         signature: string,
     ): boolean {
         const expectedSignature =
-            this.generateSignature(deviceId);
+            this.generateSignature(deviceId, sessionId);
 
         return timingSafeEqual(
             Buffer.from(signature),

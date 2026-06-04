@@ -2,6 +2,9 @@ export const RATE_LIMIT = {
     SLIDING_WINDOW: {
         WINDOW_MS: parseInt(process.env.WINDOW_MS || '60000'),
     },
+    LOGIN: {
+        LIMIT: parseInt(process.env.LOGIN_LIMIT || '5')
+    },
     IP: {
         LIMIT: parseInt(process.env.IP_LIMIT || '20'),
         TTL_SECONDS: parseInt(process.env.IP_TTL_SECONDS || '60'),
