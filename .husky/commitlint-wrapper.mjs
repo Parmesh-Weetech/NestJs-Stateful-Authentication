@@ -8,7 +8,7 @@ const message = fs.readFileSync(file, 'utf-8')
 const result = await lint(message, conventional.rules)
 
 if (!result.valid) {
-  result.errors.forEach(e => console.log('✖ ' + e.name + ': ' + e.value))
+  result.errors.forEach(e => console.log('✖ ' + e.message))
   console.log('✖ found ' + result.errors.length + ' problems, 0 warnings')
   process.exit(1)
 }
