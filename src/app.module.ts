@@ -12,8 +12,12 @@ import { User } from './user/entities/user.entity';
 
 import { UserSession } from './auth/entities/user-session.entity';
 import { RedisModule } from './redis/redis.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SessionActivityInterceptor } from './common/interceptors/session-activity.interceptor';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { RateLimitGuard } from './rate-limit/guards/rate-limit.guard';
+import { DeviceModule } from './device/device.module';
+import { DeviceSignatureCheckGuard } from './device/guards/device-signature-check.guard';
 
 @Module({
   imports: [
@@ -45,11 +49,21 @@ import { SessionActivityInterceptor } from './common/interceptors/session-activi
     AuthModule,
     UserModule,
     RedisModule,
+    RateLimitModule,
+    DeviceModule,
   ],
   providers: [
     {
       provide: APP_INTERCEPTOR,
       useClass: SessionActivityInterceptor
+    },
+    {
+      provide: APP_GUARD,
+      useClass: DeviceSignatureCheckGuard
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard
     }
   ]
 })

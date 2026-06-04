@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import { createRedisClient } from '../common/helper/createRedisClient';
+import { createRedisClient } from './helper/createRedisClient';
 import { getExpiredTime } from '../common/helper/getExpiredTime';
 
 import type { RedisClientType } from 'redis';
@@ -31,8 +31,84 @@ export class RedisService
         await this.client.quit();
     }
 
+    getClient(): RedisClientType {
+        if (!this.client) {
+            this.client = createRedisClient();
+        }
+        return this.client;
+    }
+
     buildRedisSessionKey(sessionId: string): string {
         return `sess:${sessionId}`;
+    }
+
+    buildRedisRateLimitKey(
+        type: 'ip' | 'user' | 'fingerprint' | 'device' | 'user:device' | 'ip:bucket' | 'user:bucket' | 'device:bucket' | 'fingerprint:bucket' | 'user:session' | 'user:session:bucket',
+        userId?: string,
+        ip?: string,
+        deviceId?: string,
+        fingerPrintId?: string,
+        sessionId?: string
+    ): string {
+        switch (type) {
+            case 'ip':
+                if (!ip) {
+                    throw new Error('IP is required for IP rate limit');
+                }
+                return `rate-limit:ip:${ip}`;
+            case 'user':
+                if (!userId) {
+                    throw new Error('User ID is required for user rate limit');
+                }
+                return `rate-limit:user:${userId}`;
+            case 'fingerprint':
+                if (!fingerPrintId) {
+                    throw new Error('Fingerprint is required for fingerprint rate limit');
+                }
+                return `rate-limit:fingerprint:${fingerPrintId}`;
+            case 'device':
+                if (!deviceId) {
+                    throw new Error('Device ID is required for device rate limit');
+                }
+                return `rate-limit:device:${deviceId}`;
+            case 'user:device':
+                if (!userId || !deviceId) {
+                    throw new Error('User ID and device ID are required for User:Device rate limit');
+                }
+                return `rate-limit:user:${userId}:device:${deviceId}`;
+            case 'ip:bucket':
+                if (!ip) {
+                    throw new Error('IP is required for IP:Bucket rate limit');
+                }
+                return `rate-limit:ip:bucket:${ip}`;
+            case 'user:bucket':
+                if (!userId) {
+                    throw new Error('User ID is required for User:Bucket rate limit');
+                }
+                return `rate-limit:user:bucket:${userId}`;
+            case 'device:bucket':
+                if (!deviceId) {
+                    throw new Error('Device ID is required for Device:Bucket rate limit');
+                }
+                return `rate-limit:device:bucket:${deviceId}`;
+            case 'fingerprint:bucket':
+                if (!fingerPrintId) {
+                    throw new Error('Fingerprint ID is required for Fingerprint:Bucket rate limit');
+                }
+                return `rate-limit:fingerprint:bucket:${fingerPrintId}`;
+            case 'user:session': 
+                if (!userId || !sessionId) {
+                    throw new Error('User ID and session ID are required for User:Session rate limit');
+                }
+                return `rate-limit:user:${userId}:session:${sessionId}`;
+            case 'user:session:bucket':
+                if (!userId || !sessionId) {
+                    throw new Error('User ID and session ID are required for User:Session:Bucket rate limit');
+                }
+                return `rate-limit:user:${userId}:session:bucket:${sessionId}`;
+            default:
+                throw new Error('Invalid rate limit type');
+        }
     }
 
     async refreshRedisSession(sessionId: string): Promise<void> {
