@@ -13,6 +13,7 @@ import { UserService } from '../user/user.service';
 import { SessionService } from './session.service';
 import { RedisService } from 'src/redis/redis.service';
 import { getExpiredTime } from 'src/common/helper/getExpiredTime';
+import { createHmac } from 'node:crypto';
 
 @Injectable()
 export class AuthService {
@@ -54,6 +55,14 @@ export class AuthService {
             throw new UnauthorizedException(
                 'Device not recognized. Please login again.',
             );
+        }
+
+        const signature = createHmac('sha256', process.env.FINGERPRINT_SECRET!)
+            .update(deviceId)
+            .digest('hex');
+
+        if(!signature) {
+            throw new BadRequestException('Cannot verify device');
         }
 
         const user = req.user;
@@ -98,6 +107,7 @@ export class AuthService {
         return {
             message: 'Logged in',
             user: req.user,
+            signature
         };
     }
 

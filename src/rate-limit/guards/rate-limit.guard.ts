@@ -15,8 +15,11 @@ export class RateLimitGuard implements CanActivate {
 
     const user = request.user;
     const ip = request.headers['x-forwarded-for']?.split(',')[0] || request.ip;
-    const deviceId = request.headers['x-device-id'];
-    const fingerPrintId = request.headers['x-fingerprint'];
+    const deviceId = request.deviceId;
+    const fingerPrintId = request.deviceFingerprint;
+
+    console.log('deviceId', deviceId);
+    console.log('fingerprint', fingerPrintId)
 
     const ipResult = await this.rateLimitService.checkIpLimit(
       ip,

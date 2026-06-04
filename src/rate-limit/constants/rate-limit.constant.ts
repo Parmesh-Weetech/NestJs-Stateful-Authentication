@@ -15,11 +15,11 @@ export const RATE_LIMIT = {
         TTL_SECONDS: parseInt(process.env.DEVICE_TTL_SECONDS || '60'),
     },
     FINGERPRINT: {
-        LIMIT: parseInt(process.env.FINGERPRINT_LIMIT || '10'),
+        LIMIT: parseInt(process.env.FINGERPRINT_LIMIT || '1'),
         TTL_SECONDS: parseInt(process.env.FINGERPRINT_TTL_SECONDS || '60'),
     },
     SESSION: {
-        LIMIT: parseInt(process.env.SESSION_LIMIT || '1'),
+        LIMIT: parseInt(process.env.SESSION_LIMIT || '10'),
         TTL_SECONDS: parseInt(process.env.SESSION_TTL_SECONDS || '60'),
     },
     IP_TOKEN_BUCKET: {
