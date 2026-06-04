@@ -18,6 +18,7 @@ import { SessionSerializer } from './session.serializer';
 
 import { UserSession } from './entities/user-session.entity';
 import { RedisModule } from 'src/redis/redis.module';
+import { DeviceModule } from 'src/device/device.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { RedisModule } from 'src/redis/redis.module';
       UserSession,
     ]),
 
-    RedisModule
+    RedisModule,
+    DeviceModule
   ],
 
   controllers: [AuthController],
@@ -42,6 +44,6 @@ import { RedisModule } from 'src/redis/redis.module';
     LocalStrategy,
     SessionSerializer,
   ],
-  exports: [SessionService]
+  exports: [SessionService, AuthService]
 })
 export class AuthModule { }

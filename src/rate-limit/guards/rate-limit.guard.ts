@@ -1,9 +1,13 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { RateLimitService } from '../rate-limit.service';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  constructor(private readonly rateLimitService: RateLimitService) { }
+  constructor(
+    private readonly rateLimitService: RateLimitService,
+    private readonly authService: AuthService
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -45,6 +49,12 @@ export class RateLimitGuard implements CanActivate {
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
+    }
+
+    const checkFingerprintExists = await this.authService.checkDeviceFingerprintExists(request.sessionID, user.id);
+
+    if (!checkFingerprintExists) {
+      await this.authService.updateDeviceFingerprint(request.sessionID, fingerPrintId);
     }
 
     return true;

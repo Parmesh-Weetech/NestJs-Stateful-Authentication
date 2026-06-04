@@ -2,10 +2,11 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 
 import { UserSession } from './entities/user-session.entity';
 import { RedisService } from 'src/redis/redis.service';
+import { SessionInvalidationReason } from './types/invalidation_reason.type';
 
 @Injectable()
 export class SessionService {
@@ -92,7 +93,7 @@ export class SessionService {
         }
     }
 
-    async invalidateSessionBySessionId(sessionId: string) {
+    async invalidateSessionBySessionId(sessionId: string, invalidationReason: SessionInvalidationReason) {
         await this.sessionRepository.update(
             {
                 sessionId,
@@ -101,6 +102,7 @@ export class SessionService {
             {
                 isValid: false,
                 invalidatedAt: new Date(),
+                invalidationReason
             },
         );
     }
@@ -119,5 +121,37 @@ export class SessionService {
         );
 
         await this.redisService.refreshRedisSession(sessionId);
+    }
+
+    async updateDeviceFingerprint(
+        sessionId: string,
+        deviceFingerprint: string,
+    ) {
+        await this.sessionRepository.update(
+            {
+                sessionId,
+                isValid: true,
+            },
+            {
+                deviceFingerprint,
+            },
+        );
+    }
+
+    async checkDeviceFingerprintExists(sessionId: string, userId: string) {
+        const session = await this.sessionRepository.findOne({
+            where: {
+                sessionId,
+                userId,
+                isValid: true,
+                deviceFingerprint: Not(IsNull())
+            }
+        })
+
+        if(session) {
+            return true;
+        }
+
+        return false;
     }
 }
