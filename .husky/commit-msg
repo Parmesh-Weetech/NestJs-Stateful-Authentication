@@ -1,0 +1,2 @@
+#!/bin/sh
+exec node ./.husky/commitlint-wrapper.mjs "$1" 2>&1 || exit $?
