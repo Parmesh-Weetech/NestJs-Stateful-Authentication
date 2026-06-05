@@ -1,7 +1,8 @@
-import { Exclude } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 import {
   IsEmail,
   IsEnum,
+  IsNotEmpty,
   IsOptional,
   MaxLength,
   MinLength,
@@ -19,4 +20,8 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(UserPlan)
   plan: UserPlan;
+
+  @IsNotEmpty()
+  @Type(() => String)
+  otp: string;
 }

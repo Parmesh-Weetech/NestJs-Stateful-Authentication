@@ -17,6 +17,8 @@ import { DeviceService } from 'src/device/device.service';
 import { DeviceMetadataService } from 'src/device/device-metadata.service';
 import { SessionInvalidationReason } from './types/invalidation_reason.type';
 import { UserPlan } from 'src/user/types/plan.type';
+import { TwoFactorAuthenticationService } from 'src/two-factor-authentication/two-factor-authentication.service';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +28,7 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly deviceMetadataService: DeviceMetadataService,
     private readonly deviceService: DeviceService,
+    private readonly twoFactorAuthenticationService: TwoFactorAuthenticationService,
   ) {}
 
   async register(email: string, password: string, plan?: UserPlan) {
@@ -238,5 +241,9 @@ export class AuthService {
       sessionId,
       userId,
     );
+  }
+
+  async verifyOtp(user: User, otp: string) {
+    return await this.twoFactorAuthenticationService.verifyOtp(user, otp);
   }
 }

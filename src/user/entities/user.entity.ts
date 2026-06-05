@@ -29,6 +29,24 @@ export class User {
   isActive: boolean;
 
   @Column({
+    default: false,
+  })
+  isTwoFactorAuthenticationEnabled: boolean;
+
+  @Column({
+    nullable: true,
+    type: 'varchar',
+    length: 255,
+  })
+  twoFactorSecret?: string | null;
+
+  @Column({
+    nullable: true,
+    type: 'varchar',
+  })
+  twoFactorBackupCodes?: string[] | null;
+
+  @Column({
     type: 'enum',
     enum: UserPlan,
     default: UserPlan.FREE,

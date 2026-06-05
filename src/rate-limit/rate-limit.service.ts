@@ -664,10 +664,8 @@ export class RateLimitService {
 
   async checkDailyLimit(user: User) {
     const planName = user.plan;
-    console.log(planName);
 
     const loadWindowLimit = RATE_LIMITS[planName];
-    console.log(loadWindowLimit);
 
     const minuteKey = await this.redisService.buildRedisRateLimitKey(
       'user:minute',
