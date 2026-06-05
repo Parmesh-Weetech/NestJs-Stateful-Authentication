@@ -9,6 +9,7 @@ import {
 
 import { UserSession } from '../../auth/entities/user-session.entity';
 import { UserPlan } from '../types/plan.type';
+import { BackUpCodes } from './backup_codes.entity';
 
 @Entity('users')
 export class User {
@@ -40,11 +41,8 @@ export class User {
   })
   twoFactorSecret?: string | null;
 
-  @Column({
-    nullable: true,
-    type: 'varchar',
-  })
-  twoFactorBackupCodes?: string[] | null;
+  @OneToMany(() => BackUpCodes, (code) => code.user)
+  backupCodes: BackUpCodes[];
 
   @Column({
     type: 'enum',

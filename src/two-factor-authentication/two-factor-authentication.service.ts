@@ -7,6 +7,7 @@ import { User } from 'src/user/entities/user.entity';
 import { UserService } from 'src/user/user.service';
 import speakeasy from 'speakeasy';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class TwoFactorAuthenticationService {
@@ -34,11 +35,6 @@ export class TwoFactorAuthenticationService {
         otpAuthUrl: secret.otpauth_url,
       };
     }
-
-    const token = speakeasy.totp({
-      secret: secret.base32,
-      encoding: 'base32',
-    });
 
     throw new InternalServerErrorException('Failed to update 2FA secret');
   }
@@ -72,7 +68,24 @@ export class TwoFactorAuthenticationService {
     const enable2FA = await this.userService.enable2FA(user.id);
 
     if (enable2FA) {
-      return true;
+      const backupCodes: string[] = [];
+
+      for (let i = 0; i < 10; i++) {
+        const backupCode = await this.generateBackupCode();
+        backupCodes.push(backupCode);
+      }
+
+      const hashedBackupCodes = await Promise.all(
+        backupCodes.map((code) =>
+          bcrypt.hash(code, parseInt(process.env.BCRYPT_SALT || '12')),
+        ),
+      );
+
+      await this.userService.addBackupCodes(hashedBackupCodes, user.id);
+      return {
+        enabled: true,
+        backUpCodes: backupCodes,
+      };
     }
 
     throw new InternalServerErrorException('Failed to enable 2FA');
@@ -149,5 +162,21 @@ export class TwoFactorAuthenticationService {
     });
 
     return token;
+  }
+
+  async generateBackupCode(): Promise<string> {
+    const code = randomBytes(4).toString('hex').toUpperCase();
+
+    return `${code.slice(0, 4)}-${code.slice(4)}`;
+  }
+
+  async verifyBackupCode(code: string, userId: string) {
+    const backupCode = await this.userService.validateBackupCode(code, userId);
+
+    if (!backupCode) {
+      throw new BadRequestException('Invalid Backup Code');
+    }
+
+    return true;
   }
 }
