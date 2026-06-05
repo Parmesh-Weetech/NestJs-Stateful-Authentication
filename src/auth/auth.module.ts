@@ -21,6 +21,7 @@ import { RedisModule } from 'src/redis/redis.module';
 import { DeviceModule } from 'src/device/device.module';
 import { RateLimitModule } from 'src/rate-limit/rate-limit.module';
 import { forwardRef } from '@nestjs/common';
+import { TwoFactorAuthenticationModule } from 'src/two-factor-authentication/two-factor-authentication.module';
 
 @Module({
   imports: [
@@ -30,23 +31,17 @@ import { forwardRef } from '@nestjs/common';
       session: true,
     }),
 
-    TypeOrmModule.forFeature([
-      UserSession,
-    ]),
+    TypeOrmModule.forFeature([UserSession]),
 
     RedisModule,
     DeviceModule,
-    forwardRef(() => RateLimitModule)
+    forwardRef(() => RateLimitModule),
+    forwardRef(() => TwoFactorAuthenticationModule),
   ],
 
   controllers: [AuthController],
 
-  providers: [
-    AuthService,
-    SessionService,
-    LocalStrategy,
-    SessionSerializer,
-  ],
-  exports: [SessionService, AuthService]
+  providers: [AuthService, SessionService, LocalStrategy, SessionSerializer],
+  exports: [SessionService, AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

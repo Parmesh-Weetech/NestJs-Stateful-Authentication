@@ -19,6 +19,7 @@ import { RateLimitGuard } from './rate-limit/guards/rate-limit.guard';
 import { DeviceModule } from './device/device.module';
 import { DeviceSignatureCheckGuard } from './device/guards/device-signature-check.guard';
 import { GeoModule } from './geo/geo.module';
+import { TwoFactorAuthenticationModule } from './two-factor-authentication/two-factor-authentication.module';
 
 @Module({
   imports: [
@@ -39,10 +40,7 @@ import { GeoModule } from './geo/geo.module';
 
       database: process.env.DB_NAME,
 
-      entities: [
-        User,
-        UserSession,
-      ],
+      entities: [User, UserSession],
 
       synchronize: true,
     }),
@@ -53,20 +51,21 @@ import { GeoModule } from './geo/geo.module';
     RateLimitModule,
     DeviceModule,
     GeoModule,
+    TwoFactorAuthenticationModule,
   ],
   providers: [
     {
       provide: APP_INTERCEPTOR,
-      useClass: SessionActivityInterceptor
+      useClass: SessionActivityInterceptor,
     },
-    {
-      provide: APP_GUARD,
-      useClass: DeviceSignatureCheckGuard
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RateLimitGuard
-    }
-  ]
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: DeviceSignatureCheckGuard
+    // },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: RateLimitGuard
+    // }
+  ],
 })
-export class AppModule { }
+export class AppModule {}
