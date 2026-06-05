@@ -9,8 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 
 import { User } from './user/entities/user.entity';
-
 import { UserSession } from './auth/entities/user-session.entity';
+import { BackUpCodes } from './user/entities/backup_codes.entity';
 import { RedisModule } from './redis/redis.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SessionActivityInterceptor } from './common/interceptors/session-activity.interceptor';
@@ -40,7 +40,7 @@ import { TwoFactorAuthenticationModule } from './two-factor-authentication/two-f
 
       database: process.env.DB_NAME,
 
-      entities: [User, UserSession],
+      entities: [User, UserSession, BackUpCodes],
 
       synchronize: true,
     }),

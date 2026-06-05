@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
 import { TwoFactorAuthenticationService } from './two-factor-authentication.service';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -18,12 +25,19 @@ export class TwoFactorAuthenticationController {
   @UseGuards(AuthenticatedGuard)
   @Post('/verify')
   async verify(@Req() req: Request, @Body() body: { otp: string }) {
-    await this.twoFactorAuthenticationService.verify(
+    const response = await this.twoFactorAuthenticationService.verify(
       body.otp,
       (req as any).user.id,
     );
 
-    return '2FA successfully enabled.';
+    if (response.enabled) {
+      return {
+        message: '2FA successfully enabled.',
+        backupCodes: response.backUpCodes,
+      };
+    } else {
+      throw new BadRequestException('Invalid otp.');
+    }
   }
 
   @UseGuards(AuthenticatedGuard)
@@ -40,6 +54,15 @@ export class TwoFactorAuthenticationController {
       body.password,
       body.otp,
       (req as any).user,
+    );
+  }
+
+  @UseGuards(AuthenticatedGuard)
+  @Post('/verify/backup-code')
+  async verifyBackupCode(@Req() req: Request, @Body() body: { code: string }) {
+    return this.twoFactorAuthenticationService.verifyBackupCode(
+      body.code,
+      (req as any).user.id,
     );
   }
 
