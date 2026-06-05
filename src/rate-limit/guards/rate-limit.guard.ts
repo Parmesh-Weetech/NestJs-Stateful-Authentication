@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { RateLimitService } from '../rate-limit.service';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
@@ -9,8 +15,8 @@ export class RateLimitGuard implements CanActivate {
   constructor(
     private readonly rateLimitService: RateLimitService,
     private readonly authService: AuthService,
-    private readonly reflector: Reflector
-  ) { }
+    private readonly reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -25,29 +31,34 @@ export class RateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
 
     const user = request.user;
-    const ip = await this.authService.getPublicIp() || request.ip;
+    const ip = (await this.authService.getPublicIp()) || request.ip;
     const deviceId = request.deviceId;
     const fingerPrintId = request.deviceFingerprint;
 
-    const ipResult = await this.rateLimitService.checkIpLimit(
-      ip,
-    );
+    const ipResult = await this.rateLimitService.checkIpLimit(ip);
 
-    const userResult = await this.rateLimitService.checkUserLimit(
-      user.id,
-    )
+    const userResult = await this.rateLimitService.checkUserLimit(user.id);
 
-    const deviceProtectionResult = await this.rateLimitService.checkDeviceProtection(
-      deviceId,
-      fingerPrintId
-    )
+    const deviceProtectionResult =
+      await this.rateLimitService.checkDeviceProtection(
+        deviceId,
+        fingerPrintId,
+      );
 
     const sessionResult = await this.rateLimitService.checkSessionLimit(
       user.id,
-      request.session.id
-    )
+      request.session.id,
+    );
 
-    if (!ipResult.allowed || !userResult.allowed || !deviceProtectionResult.allowed || !sessionResult.allowed) {
+    const dailyLImitResult = await this.rateLimitService.checkDailyLimit(user);
+
+    if (
+      !ipResult.allowed ||
+      !userResult.allowed ||
+      !deviceProtectionResult.allowed ||
+      !sessionResult.allowed ||
+      !dailyLImitResult.allowed
+    ) {
       throw new HttpException(
         {
           statusCode: 429,
