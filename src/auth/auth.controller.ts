@@ -1,14 +1,14 @@
 import {
-    Body,
-    Controller,
-    Get,
-    Headers,
-    HttpCode,
-    Post,
-    Query,
-    Req,
-    Res,
-    UseGuards,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
 
 import type { Request, Response } from 'express';
@@ -26,70 +26,54 @@ import { LoginRateLimitGuard } from 'src/rate-limit/guards/login-rate-limit.guar
 
 @Controller('auth')
 export class AuthController {
-    constructor(
-        private readonly authService: AuthService,
-    ) { }
+  constructor(private readonly authService: AuthService) {}
 
-    @Public()
-    @Post('register')
-    async register(
-        @Body() dto: RegisterDto,
-    ) {
-        return this.authService.register(
-            dto.email,
-            dto.password,
-        );
-    }
+  @Public()
+  @Post('register')
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto.email, dto.password, dto.plan);
+  }
 
-    @Public()
-    @UseGuards(LoginRateLimitGuard, LocalAuthGuard)
-    @Post('login')
-    async login(
-        @Req() req: Request,
-        @Res({ passthrough: true }) res: Response,
-        @Headers('x-device-id') deviceId?: string,
-    ): Promise<{
-        message: string,
-        user: Express.User | undefined
-    }> {
-        const response = await this.authService.login(req, deviceId || null);
+  @Public()
+  @UseGuards(LoginRateLimitGuard, LocalAuthGuard)
+  @Post('login')
+  async login(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Headers('x-device-id') deviceId?: string,
+  ): Promise<{
+    message: string;
+    user: Express.User | undefined;
+  }> {
+    const response = await this.authService.login(req, deviceId || null);
 
-        res.setHeader('x-device-id', deviceId || '');
-        res.setHeader('x-device-signature', response.signature);
+    res.setHeader('x-device-id', deviceId || '');
+    res.setHeader('x-device-signature', response.signature);
 
-        return {
-            message: response.message,
-            user: response.user,
-        };
-    }
+    return {
+      message: response.message,
+      user: response.user,
+    };
+  }
 
-    @UseGuards(AuthenticatedGuard, DeviceSignatureCheckGuard)
-    @Get('me')
-    me(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-        return req.user;
-    }
+  @UseGuards(AuthenticatedGuard, DeviceSignatureCheckGuard)
+  @Get('me')
+  me(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    return req.user;
+  }
 
-    @UseGuards(AuthenticatedGuard, DeviceSignatureCheckGuard)
-    @Get('sessions')
-    async listSessions(
-        @Req() req: Request,
-        @Query('type') type: 'active' | 'inactive' | 'both' = 'active',
-    ) {
-        return await this.authService.listUserSessions(
-            req,
-            type,
-        );
-    }
+  @UseGuards(AuthenticatedGuard, DeviceSignatureCheckGuard)
+  @Get('sessions')
+  async listSessions(
+    @Req() req: Request,
+    @Query('type') type: 'active' | 'inactive' | 'both' = 'active',
+  ) {
+    return await this.authService.listUserSessions(req, type);
+  }
 
-    @HttpCode(200)
-    @Post('logout')
-    async logout(
-        @Req() req: Request,
-        @Headers('X-Device-Id') deviceId: string,
-    ) {
-        return await this.authService.logout(
-            req,
-            deviceId as string,
-        );
-    }
+  @HttpCode(200)
+  @Post('logout')
+  async logout(@Req() req: Request, @Headers('X-Device-Id') deviceId: string) {
+    return await this.authService.logout(req, deviceId as string);
+  }
 }
