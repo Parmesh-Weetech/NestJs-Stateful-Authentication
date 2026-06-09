@@ -1,3 +1,4 @@
+import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
@@ -6,16 +7,19 @@ import * as nodemailer from 'nodemailer';
 export class MailService implements OnModuleInit, OnModuleDestroy {
   private transporter: nodemailer.Transporter;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly mailerService: MailerService,
+  ) {}
 
   async onModuleInit() {
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: Number(this.configService.get<number>('SMTP_PORT')),
+      host: this.configService.getOrThrow<string>('SMTP_HOST'),
+      port: Number(this.configService.getOrThrow<number>('SMTP_PORT')),
       secure: false,
       auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASSWORD'),
+        user: this.configService.getOrThrow<string>('SMTP_USER'),
+        pass: this.configService.getOrThrow<string>('SMTP_PASSWORD'),
       },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
@@ -35,7 +39,7 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
   async sendMail(to: string, subject: string, text: string) {
     await this.transporter
       .sendMail({
-        from: this.configService.get<string>('SMTP_FROM'),
+        from: this.configService.getOrThrow<string>('SMTP_FROM'),
         to,
         subject,
         text,
@@ -52,5 +56,28 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy() {
     await this.transporter.close();
+  }
+
+  async sendAnotherPackageMail(email: string, name: string, subject: string) {
+    console.log('here');
+    console.log('name', name);
+
+    const result = await this.mailerService
+      .sendMail({
+        to: email,
+        subject,
+        template: 'email',
+        context: {
+          name: name,
+        },
+      })
+      .catch((err) => {
+        console.log(err);
+        console.log('Error sending mail', err);
+        throw new Error(err.message);
+      });
+
+    console.log('result', result);
+    return result;
   }
 }
