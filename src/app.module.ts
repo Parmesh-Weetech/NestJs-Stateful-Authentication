@@ -20,6 +20,7 @@ import { DeviceModule } from './device/device.module';
 import { DeviceSignatureCheckGuard } from './device/guards/device-signature-check.guard';
 import { GeoModule } from './geo/geo.module';
 import { TwoFactorAuthenticationModule } from './two-factor-authentication/two-factor-authentication.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { TwoFactorAuthenticationModule } from './two-factor-authentication/two-f
     DeviceModule,
     GeoModule,
     TwoFactorAuthenticationModule,
+    MailModule,
   ],
   providers: [
     {
