@@ -14,7 +14,6 @@ export class MailController {
   async sendMailV2(
     @Body() body: { email: string; name: string; subject: string },
   ) {
-    console.log('here in controller');
     return await this.mailService.sendAnotherPackageMail(
       body.email,
       body.name,
