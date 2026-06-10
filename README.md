@@ -63,12 +63,15 @@ This project demonstrates how to implement secure session-based authentication i
 Unlike JWT authentication where tokens are stored client-side, session authentication stores authentication state on the server.
 
 The browser only stores:
+
 - session ID
 
 The server stores:
+
 - actual session data
 
 This approach is widely used in:
+
 - enterprise applications
 - admin dashboards
 - banking systems
@@ -84,6 +87,7 @@ This approach is widely used in:
 ### Server-side control
 
 You can:
+
 - instantly logout users
 - revoke sessions
 - invalidate compromised accounts
@@ -94,6 +98,7 @@ You can:
 ### Better browser security
 
 Cookies can be:
+
 - HTTP-only
 - secure
 - sameSite protected
@@ -105,9 +110,11 @@ This reduces token theft risks.
 ### Easier invalidation
 
 With JWT:
+
 - tokens remain valid until expiration
 
 With sessions:
+
 - delete Redis session
 - user instantly logged out
 
@@ -118,6 +125,7 @@ With sessions:
 Authentication state lives in Redis.
 
 Useful for:
+
 - multiple servers
 - scaling
 - admin controls
@@ -147,14 +155,14 @@ PostgreSQL Database
 
 # Core Components
 
-| Component | Purpose |
-|---|---|
-| Browser Cookie | Stores session ID |
-| Redis | Stores session data |
-| PostgreSQL | Stores users |
-| Passport | Authentication framework |
-| express-session | Session middleware |
-| TypeORM | Database ORM |
+| Component       | Purpose                  |
+| --------------- | ------------------------ |
+| Browser Cookie  | Stores session ID        |
+| Redis           | Stores session data      |
+| PostgreSQL      | Stores users             |
+| Passport        | Authentication framework |
+| express-session | Session middleware       |
+| TypeORM         | Database ORM             |
 
 ---
 
@@ -233,13 +241,13 @@ login(@Req() req: Request)
 ## Step 2: LocalAuthGuard Executes
 
 ```ts
-AuthGuard('local')
+AuthGuard('local');
 ```
 
 This internally calls:
 
 ```ts
-passport.authenticate('local')
+passport.authenticate('local');
 ```
 
 ---
@@ -247,10 +255,11 @@ passport.authenticate('local')
 ## Step 3: LocalStrategy Executes
 
 ```ts
-validate(email, password)
+validate(email, password);
 ```
 
 Passport extracts:
+
 - email
 - password
 
@@ -261,10 +270,7 @@ from request body.
 ## Step 4: Validate User
 
 ```ts
-const user = await authService.validateUser(
-  email,
-  password,
-);
+const user = await authService.validateUser(email, password);
 ```
 
 ---
@@ -282,7 +288,7 @@ await userRepository.findOne({
 ## Step 6: Compare Password
 
 ```ts
-bcrypt.compare(password, user.password)
+bcrypt.compare(password, user.password);
 ```
 
 Passwords are never stored in plain text.
@@ -307,13 +313,13 @@ Example:
 ## Step 8: serializeUser() Executes
 
 ```ts
-serializeUser(user, done)
+serializeUser(user, done);
 ```
 
 Stores minimal data:
 
 ```ts
-done(null, user.id)
+done(null, user.id);
 ```
 
 Only user ID stored in session.
@@ -404,7 +410,7 @@ GET sess:s%3Afjksdf...
 ## Step 3: Passport Restores User
 
 ```ts
-deserializeUser(userId)
+deserializeUser(userId);
 ```
 
 ---
@@ -412,12 +418,13 @@ deserializeUser(userId)
 ## Step 4: User Loaded From PostgreSQL
 
 ```ts
-findById(userId)
+findById(userId);
 ```
 
 Fresh database lookup every request.
 
 This ensures:
+
 - latest permissions
 - latest roles
 - deleted users invalidated
@@ -427,7 +434,7 @@ This ensures:
 ## Step 5: req.user Attached
 
 ```ts
-req.user = user
+req.user = user;
 ```
 
 ---
@@ -435,7 +442,7 @@ req.user = user
 ## Step 6: Route Access Granted
 
 ```ts
-request.isAuthenticated()
+request.isAuthenticated();
 ```
 
 returns:
@@ -449,11 +456,13 @@ true
 # Why Redis Is Used
 
 Without Redis:
+
 - sessions stored in server memory
 - server restart destroys sessions
 - scaling impossible
 
 Redis solves:
+
 - persistence
 - centralized sessions
 - horizontal scaling
@@ -469,7 +478,7 @@ TTL = Time To Live
 Example:
 
 ```ts
-ttl: 60 * 60 * 24
+ttl: 60 * 60 * 24;
 ```
 
 Meaning:
@@ -711,16 +720,16 @@ app.use(
 
 # Session Configuration Explained
 
-| Option | Purpose |
-|---|---|
-| store | Redis session storage |
-| ttl | Session expiration |
-| secret | Cookie signing |
-| resave | Avoid unnecessary saves |
-| saveUninitialized | Prevent empty sessions |
-| httpOnly | Block JavaScript access |
-| secure | HTTPS-only cookies |
-| sameSite | CSRF protection |
+| Option            | Purpose                 |
+| ----------------- | ----------------------- |
+| store             | Redis session storage   |
+| ttl               | Session expiration      |
+| secret            | Cookie signing          |
+| resave            | Avoid unnecessary saves |
+| saveUninitialized | Prevent empty sessions  |
+| httpOnly          | Block JavaScript access |
+| secure            | HTTPS-only cookies      |
+| sameSite          | CSRF protection         |
 
 ---
 
@@ -729,12 +738,13 @@ app.use(
 Without httpOnly:
 
 ```js
-document.cookie
+document.cookie;
 ```
 
 can expose session cookie.
 
 With httpOnly:
+
 - JavaScript cannot access cookies
 - helps prevent XSS token theft
 
@@ -745,10 +755,11 @@ With httpOnly:
 ```ts
 PassportModule.register({
   session: true,
-})
+});
 ```
 
 Enables:
+
 - serializeUser
 - deserializeUser
 - persistent sessions
@@ -759,26 +770,15 @@ Enables:
 
 ```ts
 @Injectable()
-export class LocalStrategy
-  extends PassportStrategy(Strategy) {
-
-  constructor(
-    private readonly authService: AuthService,
-  ) {
+export class LocalStrategy extends PassportStrategy(Strategy) {
+  constructor(private readonly authService: AuthService) {
     super({
       usernameField: 'email',
     });
   }
 
-  async validate(
-    email: string,
-    password: string,
-  ) {
-    const user =
-      await this.authService.validateUser(
-        email,
-        password,
-      );
+  async validate(email: string, password: string) {
+    const user = await this.authService.validateUser(email, password);
 
     if (!user) {
       throw new UnauthorizedException();
@@ -794,12 +794,14 @@ export class LocalStrategy
 # Why Local Strategy Exists
 
 Separates:
+
 - authentication logic
 - controller logic
 
 Passport strategies make authentication modular.
 
 Later you can add:
+
 - JWT
 - OAuth2
 - GitHub auth
@@ -814,11 +816,11 @@ without rewriting application structure.
 
 ```ts
 @Injectable()
-export class LocalAuthGuard
-  extends AuthGuard('local') {}
+export class LocalAuthGuard extends AuthGuard('local') {}
 ```
 
 Purpose:
+
 - triggers LocalStrategy
 - validates credentials
 - creates session
@@ -841,6 +843,7 @@ Stores only user ID in session.
 # Why Only User ID Is Stored
 
 Avoid:
+
 - stale data
 - huge sessions
 - duplicated user state
@@ -867,10 +870,11 @@ Runs on every authenticated request.
 # Authenticated Guard
 
 ```ts
-request.isAuthenticated()
+request.isAuthenticated();
 ```
 
 Checks whether:
+
 - valid session exists
 - Passport restored user
 
@@ -1011,6 +1015,7 @@ TTL sess:xxxxx
 # Use Environment Variables
 
 Never hardcode:
+
 - DB password
 - Redis password
 - session secret
@@ -1022,7 +1027,7 @@ Never hardcode:
 Production:
 
 ```ts
-secure: true
+secure: true;
 ```
 
 ---
@@ -1050,6 +1055,7 @@ req.session.regenerate(() => {});
 # Add Rate Limiting
 
 Use:
+
 - @nestjs/throttler
 - Redis throttling
 
@@ -1064,6 +1070,7 @@ Session auth uses cookies.
 Cookies automatically send themselves.
 
 Use:
+
 - csurf
 
 for additional protection.
@@ -1073,6 +1080,7 @@ for additional protection.
 # Horizontal Scaling
 
 With Redis:
+
 - multiple servers share same sessions
 
 Architecture:
@@ -1121,6 +1129,7 @@ Good:
 # Using MemoryStore in Production
 
 Default MemoryStore:
+
 - not scalable
 - memory leaks
 - sessions lost on restart
@@ -1132,6 +1141,7 @@ Always use Redis.
 # Forgetting secure: true
 
 Without HTTPS secure cookies:
+
 - vulnerable on public networks
 
 ---
@@ -1166,6 +1176,30 @@ After completing this system, add:
 - Redis caching
 - OAuth2
 - WebAuthn/passkeys
+
+---
+
+# Notifications (In-app)
+
+This project includes an in-app notification system that supports:
+
+- **Persisted notifications** in PostgreSQL (`notifications` table)
+- **Read/unread tracking** via `isRead` and `readAt`
+- **Real-time delivery while the app is open** using **SSE**
+
+## SSE Stream
+
+- `GET /notifications/stream`
+
+The SSE server sends events only when the user has an active SSE connection.
+
+## Notification History / Read State
+
+- `GET /notifications/:userId` (filter by `isRead`)
+- `PATCH /notifications/read/:notificationId`
+- `PATCH /notifications/read/all/:userId`
+- `DELETE /notifications/:notificationId`
+- `DELETE /notifications/:userId`
 
 ---
 
@@ -1267,6 +1301,7 @@ Protected Route Access
 # Conclusion
 
 This authentication architecture is:
+
 - secure
 - scalable
 - production-proven
@@ -1274,6 +1309,7 @@ This authentication architecture is:
 - enterprise-ready
 
 It is still one of the strongest choices for:
+
 - admin systems
 - dashboards
 - enterprise SaaS
