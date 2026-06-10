@@ -19,7 +19,6 @@ export class RedisSubscriber implements OnModuleInit {
 
     await this.subscriber.subscribe('notifications', (message) => {
       const data = JSON.parse(message);
-      console.log('Notification received:', data);
 
       if (this.streamService.isOnline(data.userId)) {
         this.streamService.sendToUser(data.userId, {
