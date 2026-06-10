@@ -5,11 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
 import { NotificationStreamService } from './notification-stream.service';
 import { AuthModule } from 'src/auth/auth.module';
+import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification]),
     forwardRef(() => AuthModule),
+    forwardRef(() => RedisModule),
   ],
   controllers: [NotificationController],
   providers: [NotificationService, NotificationStreamService],
