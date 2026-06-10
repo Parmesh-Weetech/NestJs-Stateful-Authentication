@@ -58,7 +58,7 @@ export class AuthController {
 
   @UseGuards(AuthenticatedGuard, DeviceSignatureCheckGuard)
   @Get('me')
-  me(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  me(@Req() req: Request) {
     return req.user;
   }
 

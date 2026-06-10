@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -36,7 +40,9 @@ export class UserService {
   async create(data: Partial<User>) {
     const user = this.userRepository.create(data);
 
-    return this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+
+    return savedUser;
   }
 
   async update2FASecret(secret: string, userId: string): Promise<boolean> {

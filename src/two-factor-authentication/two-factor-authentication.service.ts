@@ -8,10 +8,15 @@ import { UserService } from 'src/user/user.service';
 import speakeasy from 'speakeasy';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { NotificationService } from 'src/notification/notification.service';
+import { NotificationActorType } from 'src/notification/types/notification-actor.type';
 
 @Injectable()
 export class TwoFactorAuthenticationService {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async setup(user: User) {
     const enabled = await this.checkTwoFactorAuthenticationEnabled(user.id);
@@ -82,6 +87,21 @@ export class TwoFactorAuthenticationService {
       );
 
       await this.userService.addBackupCodes(hashedBackupCodes, user.id);
+
+      if (enable2FA) {
+        await this.notificationService.createNotification({
+          actorType: NotificationActorType.SYSTEM,
+          message: '2FA has been enabled successfully',
+          recipientId: user.id,
+          title: 'Two-Factor Authentication Enabled',
+          type: '2FA.ENABLE',
+          actorId: undefined,
+          metadata: {
+            user,
+          },
+        });
+      }
+
       return {
         enabled: true,
         backUpCodes: backupCodes,
@@ -149,13 +169,31 @@ export class TwoFactorAuthenticationService {
     const disabled = await this.userService.disable2FA(user.id);
 
     if (disabled) {
+      await this.notificationService.createNotification({
+        actorType: NotificationActorType.SYSTEM,
+        message: 'Two-Factor Authentication has been disabled successfully.',
+        recipientId: user.id,
+        title: 'Two-Factor Authentication Disabled',
+        type: '2FA.DISABLE',
+        actorId: undefined,
+        metadata: {
+          user,
+        },
+      });
+
       return '2FA disabled successfully';
     }
 
     throw new InternalServerErrorException('Failed to disable 2FA');
   }
 
-  async generateDebugOtp(user: User) {
+  async generateDebugOtp(userId: string) {
+    const user = await this.userService.findById(userId);
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
     const token = speakeasy.totp({
       secret: user.twoFactorSecret as string,
       encoding: 'base32',

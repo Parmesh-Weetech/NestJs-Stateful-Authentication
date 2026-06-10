@@ -3,11 +3,12 @@ import { TwoFactorAuthenticationController } from './two-factor-authentication.c
 import { TwoFactorAuthenticationService } from './two-factor-authentication.service';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   controllers: [TwoFactorAuthenticationController],
   providers: [TwoFactorAuthenticationService],
-  imports: [UserModule, forwardRef(() => AuthModule)],
+  imports: [UserModule, forwardRef(() => AuthModule), NotificationModule],
   exports: [TwoFactorAuthenticationService],
 })
 export class TwoFactorAuthenticationModule {}
