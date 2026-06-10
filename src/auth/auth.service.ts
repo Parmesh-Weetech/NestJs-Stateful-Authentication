@@ -19,6 +19,9 @@ import { SessionInvalidationReason } from './types/invalidation_reason.type';
 import { UserPlan } from 'src/user/types/plan.type';
 import { TwoFactorAuthenticationService } from 'src/two-factor-authentication/two-factor-authentication.service';
 import { User } from 'src/user/entities/user.entity';
+import { NotificationService } from 'src/notification/notification.service';
+import { NotificationActorType } from 'src/notification/types/notification-actor.type';
+import { NotificationStreamService } from 'src/notification/notification-stream.service';
 
 @Injectable()
 export class AuthService {

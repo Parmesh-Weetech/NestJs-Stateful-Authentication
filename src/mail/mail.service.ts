@@ -59,25 +59,20 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
   }
 
   async sendAnotherPackageMail(email: string, name: string, subject: string) {
-    console.log('here');
-    console.log('name', name);
-
     const result = await this.mailerService
       .sendMail({
         to: email,
         subject,
         template: 'email',
         context: {
-          name: name,
+          name,
         },
       })
       .catch((err) => {
-        console.log(err);
         console.log('Error sending mail', err);
         throw new Error(err.message);
       });
 
-    console.log('result', result);
     return result;
   }
 }

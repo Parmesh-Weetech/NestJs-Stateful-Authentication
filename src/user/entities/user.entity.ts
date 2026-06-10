@@ -10,6 +10,7 @@ import {
 import { UserSession } from '../../auth/entities/user-session.entity';
 import { UserPlan } from '../types/plan.type';
 import { BackUpCodes } from './backup_codes.entity';
+import { Notification } from 'src/notification/entities/notification.entity';
 
 @Entity('users')
 export class User {
@@ -53,6 +54,12 @@ export class User {
 
   @OneToMany(() => UserSession, (session) => session.user)
   sessions: UserSession[];
+
+  @OneToMany(() => Notification, (notification) => notification.recipient)
+  notificationsAsRecipient: Notification[];
+
+  @OneToMany(() => Notification, (notification) => notification.actor)
+  notificationsAsActor: Notification[];
 
   @CreateDateColumn()
   createdAt: Date;

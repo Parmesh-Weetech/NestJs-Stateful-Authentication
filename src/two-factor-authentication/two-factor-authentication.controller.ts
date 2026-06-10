@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -67,10 +68,8 @@ export class TwoFactorAuthenticationController {
   }
 
   @Public()
-  @Post('/debug-otp')
-  async debugOtp(@Req() req: Request) {
-    return this.twoFactorAuthenticationService.generateDebugOtp(
-      (req as any).user,
-    );
+  @Post('/debug-otp/:userId')
+  async debugOtp(@Param('userId') userId: string) {
+    return this.twoFactorAuthenticationService.generateDebugOtp(userId);
   }
 }

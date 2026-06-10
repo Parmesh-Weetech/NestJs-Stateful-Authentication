@@ -21,6 +21,7 @@ export class RegisterDto {
   @IsEnum(UserPlan)
   plan: UserPlan;
 
+  @IsOptional()
   @IsNotEmpty()
   @Type(() => String)
   otp: string;

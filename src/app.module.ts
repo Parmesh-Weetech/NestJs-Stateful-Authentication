@@ -12,15 +12,15 @@ import { User } from './user/entities/user.entity';
 import { UserSession } from './auth/entities/user-session.entity';
 import { BackUpCodes } from './user/entities/backup_codes.entity';
 import { RedisModule } from './redis/redis.module';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { SessionActivityInterceptor } from './common/interceptors/session-activity.interceptor';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
-import { RateLimitGuard } from './rate-limit/guards/rate-limit.guard';
 import { DeviceModule } from './device/device.module';
-import { DeviceSignatureCheckGuard } from './device/guards/device-signature-check.guard';
 import { GeoModule } from './geo/geo.module';
 import { TwoFactorAuthenticationModule } from './two-factor-authentication/two-factor-authentication.module';
 import { MailModule } from './mail/mail.module';
+import { NotificationModule } from './notification/notification.module';
+import { Notification } from './notification/entities/notification.entity';
 
 @Module({
   imports: [
@@ -41,7 +41,7 @@ import { MailModule } from './mail/mail.module';
 
       database: process.env.DB_NAME,
 
-      entities: [User, UserSession, BackUpCodes],
+      entities: [User, UserSession, BackUpCodes, Notification],
 
       synchronize: true,
     }),
@@ -54,6 +54,7 @@ import { MailModule } from './mail/mail.module';
     GeoModule,
     TwoFactorAuthenticationModule,
     MailModule,
+    NotificationModule,
   ],
   providers: [
     {

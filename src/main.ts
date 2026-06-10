@@ -14,6 +14,7 @@ import { config } from 'dotenv';
 import { RedisService } from './redis/redis.service';
 import { getExpiredTime } from './common/helper/getExpiredTime';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 
 config();
 
@@ -22,17 +23,27 @@ async function bootstrap() {
   const redisService = app.get(RedisService);
 
   app.use(helmet());
+  app.use(cookieParser());
 
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Cookie',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+    methods: ['POST', 'GET', 'DELETE', 'PATCH', 'PUT'],
   });
 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      transform: true,
       forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
