@@ -5,6 +5,7 @@ import { Notification } from './entities/notification.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ListNotification } from './dtos/list-notification.dto';
 import { NotificationStreamService } from './notification-stream.service';
+import { RedisPublisher } from 'src/redis/redis.publisher';
 
 @Injectable()
 export class NotificationService {
@@ -12,7 +13,7 @@ export class NotificationService {
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
 
-    private readonly notificationSseService: NotificationStreamService,
+    private readonly redisPublisher: RedisPublisher,
   ) {}
 
   async createNotification(
@@ -25,9 +26,15 @@ export class NotificationService {
     const savedNotification =
       await this.notificationRepository.save(notification);
 
-    this.notificationSseService.sendToUser(
-      savedNotification.recipientId,
-      savedNotification,
+    this.redisPublisher.publish(
+      'notifications',
+      JSON.stringify({
+        type: 'notification',
+        userId: notification.recipientId,
+        notification: {
+          ...savedNotification,
+        },
+      }),
     );
     return savedNotification;
   }

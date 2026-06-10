@@ -59,9 +59,6 @@ importers:
       helmet:
         specifier: ^8.2.0
         version: 8.2.0
-      ioredis:
-        specifier: ^5.10.1
-        version: 5.10.1
       maxmind:
         specifier: ^5.0.6
         version: 5.0.6
@@ -5378,7 +5375,8 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.19.19
 
-  '@ioredis/commands@1.5.1': {}
+  '@ioredis/commands@1.5.1':
+    optional: true
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -6928,7 +6926,8 @@ snapshots:
 
   delayed-stream@1.0.0: {}
 
-  denque@2.1.0: {}
+  denque@2.1.0:
+    optional: true
 
   depd@2.0.0: {}
 
@@ -7656,6 +7655,7 @@ snapshots:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   ipaddr.js@1.9.1: {}
 
@@ -8228,9 +8228,11 @@ snapshots:
     dependencies:
       p-locate: 5.0.0
 
-  lodash.defaults@4.2.0: {}
+  lodash.defaults@4.2.0:
+    optional: true
 
-  lodash.isarguments@3.1.0: {}
+  lodash.isarguments@3.1.0:
+    optional: true
 
   lodash.memoize@4.1.2: {}
 
@@ -9513,11 +9515,13 @@ snapshots:
 
   readdirp@4.1.2: {}
 
-  redis-errors@1.2.0: {}
+  redis-errors@1.2.0:
+    optional: true
 
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
+    optional: true
 
   redis@5.12.1:
     dependencies:
@@ -9729,7 +9733,8 @@ snapshots:
     dependencies:
       escape-string-regexp: 2.0.0
 
-  standard-as-callback@2.1.0: {}
+  standard-as-callback@2.1.0:
+    optional: true
 
   statuses@2.0.2: {}
 

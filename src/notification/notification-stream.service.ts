@@ -18,6 +18,10 @@ export class NotificationStreamService {
     return subject.asObservable();
   }
 
+  isOnline(userId: string): boolean {
+    return (this.clients.get(userId)?.size ?? 0) > 0;
+  }
+
   unsubscribe(userId: string, subject: Subject<MessageEvent>) {
     const connections = this.clients.get(userId);
 
@@ -30,6 +34,8 @@ export class NotificationStreamService {
     if (connections.size === 0) {
       this.clients.delete(userId);
     }
+
+    console.log('disconnected');
   }
 
   sendToUser(
@@ -51,6 +57,8 @@ export class NotificationStreamService {
       connection.next({
         data: payload,
       });
+
+      console.log('Sse send to ', userId);
     }
   }
 }
