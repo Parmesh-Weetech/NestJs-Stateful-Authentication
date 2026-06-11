@@ -2,6 +2,8 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { NotificationStreamService } from 'src/notification/notification-stream.service';
 import type { RedisClientType } from 'redis';
 import { RedisService } from './redis.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { DeliveryStatus } from 'src/notification/types/delivery-status.type';
 
 @Injectable()
 export class RedisSubscriber implements OnModuleInit {
@@ -10,6 +12,7 @@ export class RedisSubscriber implements OnModuleInit {
   constructor(
     private readonly redisService: RedisService,
     private readonly streamService: NotificationStreamService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async onModuleInit() {
@@ -28,7 +31,17 @@ export class RedisSubscriber implements OnModuleInit {
           title: data.title,
           ...data,
         });
+
+        this.notificationService.updateNotificationStatus(
+          data.id,
+          DeliveryStatus.DELIVERED,
+        );
       }
+
+      this.notificationService.updateNotificationStatus(
+        data.id,
+        DeliveryStatus.SENT,
+      );
     });
   }
 }

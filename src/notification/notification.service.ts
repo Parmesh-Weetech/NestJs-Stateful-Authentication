@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateNotificationDto } from './dtos/create-notification.dto';
 import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
@@ -6,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ListNotification } from './dtos/list-notification.dto';
 import { NotificationStreamService } from './notification-stream.service';
 import { RedisPublisher } from 'src/redis/redis.publisher';
+import { DeliveryStatus } from './types/delivery-status.type';
 
 @Injectable()
 export class NotificationService {
@@ -22,6 +27,9 @@ export class NotificationService {
     const notification = this.notificationRepository.create({
       ...createNotification,
       isRead: false,
+      deliveryStatus: DeliveryStatus.PENDING,
+      deliveredAt: undefined,
+      readAt: undefined,
     });
     const savedNotification =
       await this.notificationRepository.save(notification);
@@ -61,6 +69,24 @@ export class NotificationService {
     }
     notification.isRead = true;
     notification.readAt = new Date();
+    return await this.notificationRepository.save(notification);
+  }
+
+  async updateNotificationStatus(
+    notificationId: string,
+    status: DeliveryStatus,
+  ): Promise<Notification> {
+    const notification = await this.notificationRepository.findOne({
+      where: { id: notificationId },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    notification.deliveryStatus = status;
+    notification.deliveredAt =
+      status === DeliveryStatus.SENT ? undefined : new Date();
     return await this.notificationRepository.save(notification);
   }
 
