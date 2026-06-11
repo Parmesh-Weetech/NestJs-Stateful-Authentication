@@ -20,28 +20,34 @@ export class RedisSubscriber implements OnModuleInit {
 
     await this.subscriber.connect();
 
-    await this.subscriber.subscribe('notifications', async (message) => {
-      const data = JSON.parse(message);
+    // Subscribe to server-specific channel
+    await this.subscriber.subscribe(
+      `notifications:${this.streamService.serverId}`,
+      async (message) => {
+        const data = JSON.parse(message as string);
+        console.log('Message:: ', data);
 
-      if (this.streamService.isOnline(data.userId)) {
-        this.streamService.sendToUser(data.userId, {
-          createdAt: data.createdAt,
-          id: data.id,
-          message: data.message,
-          title: data.title,
-          ...data,
-        });
+        const { notificationId, recipientId } = data;
 
-        await this.notificationService.updateNotificationStatus(
-          data.id,
-          DeliveryStatus.DELIVERED,
-        );
-      }
+        if (this.streamService.isOnline(recipientId)) {
+          this.streamService.sendToUser(recipientId, {
+            createdAt: data.notification.createdAt,
+            id: data.notification.id,
+            message: data.notification.message,
+            title: data.notification.title,
+          });
 
-      this.notificationService.updateNotificationStatus(
-        data.id,
-        DeliveryStatus.SENT,
-      );
-    });
+          await this.notificationService.updateNotificationStatus(
+            notificationId,
+            DeliveryStatus.DELIVERED,
+          );
+        } else {
+          console.warn(
+            `Local SSE connection missing for user ${recipientId} despite receiving pub/sub routing`,
+          );
+          // TODO: Send FCM push notification when recipient is offline.
+        }
+      },
+    );
   }
 }

@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ListNotification } from './dtos/list-notification.dto';
 import { NotificationStreamService } from './notification-stream.service';
 import { RedisPublisher } from 'src/redis/redis.publisher';
+import { RedisService } from 'src/redis/redis.service';
 import { DeliveryStatus } from './types/delivery-status.type';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class NotificationService {
     private readonly notificationRepository: Repository<Notification>,
 
     private readonly redisPublisher: RedisPublisher,
+    private readonly redisService: RedisService,
   ) {}
 
   async createNotification(
@@ -34,16 +36,25 @@ export class NotificationService {
     const savedNotification =
       await this.notificationRepository.save(notification);
 
-    this.redisPublisher.publish(
-      'notifications',
-      JSON.stringify({
-        type: 'notification',
-        userId: notification.recipientId,
-        notification: {
-          ...savedNotification,
-        },
-      }),
-    );
+    const onlineKey = `sse:online:${notification.recipientId}`;
+    const serverId = await this.redisService.getClient().get(onlineKey);
+
+    if (serverId) {
+      this.redisPublisher.publish(
+        `notifications:${serverId}`,
+        JSON.stringify({
+          eventType: 'notification.created',
+          recipientId: notification.recipientId,
+          notificationId: savedNotification.id,
+          notification: {
+            ...savedNotification,
+          },
+        }),
+      );
+    } else {
+      // TODO: Send FCM push notification when recipient is offline.
+    }
+
     return savedNotification;
   }
 
@@ -57,6 +68,14 @@ export class NotificationService {
       order: { createdAt: 'DESC' },
       take: query.limit ?? 10,
       skip: query.offset ?? 0,
+    });
+  }
+
+  async getNotificationById(
+    notificationId: string,
+  ): Promise<Notification | null> {
+    return await this.notificationRepository.findOne({
+      where: { id: notificationId },
     });
   }
 
