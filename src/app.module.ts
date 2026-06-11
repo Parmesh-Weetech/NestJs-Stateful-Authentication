@@ -21,6 +21,8 @@ import { TwoFactorAuthenticationModule } from './two-factor-authentication/two-f
 import { MailModule } from './mail/mail.module';
 import { NotificationModule } from './notification/notification.module';
 import { Notification } from './notification/entities/notification.entity';
+import { BullModule } from '@nestjs/bullmq';
+import { Mail } from './mail/entities/mail.entity';
 
 @Module({
   imports: [
@@ -41,9 +43,30 @@ import { Notification } from './notification/entities/notification.entity';
 
       database: process.env.DB_NAME,
 
-      entities: [User, UserSession, BackUpCodes, Notification],
+      entities: [User, UserSession, BackUpCodes, Notification, Mail],
 
       synchronize: true,
+    }),
+
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST,
+        port: Number(process.env.REDIS_PORT),
+        password: process.env.REDIS_PASSWORD,
+      },
+    }),
+
+    BullModule.registerQueue({
+      name: 'EMAIL_QUEUE',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
     }),
 
     AuthModule,

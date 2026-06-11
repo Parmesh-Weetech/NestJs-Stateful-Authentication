@@ -5,11 +5,19 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { EjsAdapter } from '@nestjs-modules/mailer/adapters/ejs.adapter';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Mail } from './entities/mail.entity';
+import { BullModule } from '@nestjs/bullmq';
+import { EmailProcessor } from './processor/email.processor';
 
 @Module({
-  providers: [MailService],
+  providers: [MailService, EmailProcessor],
   controllers: [MailController],
   imports: [
+    TypeOrmModule.forFeature([Mail]),
+    BullModule.registerQueue({
+      name: 'EMAIL_QUEUE',
+    }),
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

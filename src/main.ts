@@ -1,6 +1,10 @@
+import { config } from 'dotenv';
+config();
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { ExpressAdapter } from '@bull-board/express';
 
 import { AppModule } from './app.module';
 
@@ -10,13 +14,14 @@ import passport from 'passport';
 
 import { RedisStore } from 'connect-redis';
 
-import { config } from 'dotenv';
 import { RedisService } from './redis/redis.service';
 import { getExpiredTime } from './common/helper/getExpiredTime';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-
-config();
+import { Queue } from 'bullmq';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { getQueueToken } from '@nestjs/bullmq';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -74,6 +79,19 @@ async function bootstrap() {
 
   app.use(passport.initialize());
   app.use(passport.session());
+
+  /* -------- Bull Board ----------*/
+  const serverAdapter = new ExpressAdapter();
+  serverAdapter.setBasePath('/admin/queues');
+
+  const emailQueue = app.get<Queue>(getQueueToken('EMAIL_QUEUE'));
+
+  createBullBoard({
+    queues: [new BullMQAdapter(emailQueue)],
+    serverAdapter,
+  });
+
+  app.use('/admin/queues', serverAdapter.getRouter());
 
   await app.listen(Number(process.env.PORT) || 3000);
 }

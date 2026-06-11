@@ -16,9 +16,7 @@ export class NotificationStreamService {
 
   private readonly onlineTtlSeconds = 60 * 15;
 
-  constructor(private readonly redisService: RedisService) {
-    console.log(this.serverId);
-  }
+  constructor(private readonly redisService: RedisService) {}
 
   subscribe(userId: string): Observable<MessageEvent> {
     const subject = new Subject<MessageEvent>();

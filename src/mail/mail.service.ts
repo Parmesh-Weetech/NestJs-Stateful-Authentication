@@ -1,13 +1,20 @@
 import { MailerService } from '@nestjs-modules/mailer';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { Queue } from 'bullmq';
+import { SendEmailDTO } from './dtos/send-email.dto';
+import { SendEmailType } from './types/mail.type';
 
 @Injectable()
 export class MailService implements OnModuleInit, OnModuleDestroy {
   private transporter: nodemailer.Transporter;
 
   constructor(
+    @InjectQueue('EMAIL_QUEUE')
+    private readonly emailQueue: Queue,
+
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
   ) {}
@@ -36,22 +43,30 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
       });
   }
 
-  async sendMail(to: string, subject: string, text: string) {
-    await this.transporter
-      .sendMail({
-        from: this.configService.getOrThrow<string>('SMTP_FROM'),
-        to,
-        subject,
-        text,
-      })
-      .then((res) => {
-        console.log('Mail send successfully');
-        return 'Mail send successfully';
-      })
-      .catch((err) => {
-        console.log('Mail send failed', err);
-        return err.message;
-      });
+  async sendMail(body: SendEmailDTO) {
+    const mailJob = await this.emailQueue.add(
+      process.env.EMAIL_JOB!,
+      {
+        to: body.to,
+        subject: body.subject,
+        templateName: body.templateName,
+        data: body.data,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+
+    return {
+      jobId: mailJob.id,
+      status: SendEmailType.QUEUED,
+    };
   }
 
   async onModuleDestroy() {
