@@ -20,7 +20,7 @@ export class RedisSubscriber implements OnModuleInit {
 
     await this.subscriber.connect();
 
-    await this.subscriber.subscribe('notifications', (message) => {
+    await this.subscriber.subscribe('notifications', async (message) => {
       const data = JSON.parse(message);
 
       if (this.streamService.isOnline(data.userId)) {
@@ -32,7 +32,7 @@ export class RedisSubscriber implements OnModuleInit {
           ...data,
         });
 
-        this.notificationService.updateNotificationStatus(
+        await this.notificationService.updateNotificationStatus(
           data.id,
           DeliveryStatus.DELIVERED,
         );
