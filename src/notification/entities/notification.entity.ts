@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { NotificationActorType } from '../types/notification-actor.type';
+import { DeliveryStatus } from '../types/delivery-status.type';
 
 @Entity('notifications')
 export class Notification {
@@ -55,6 +56,19 @@ export class Notification {
 
   @Column({ nullable: true })
   readAt?: Date;
+
+  @Column({
+    nullable: true,
+  })
+  deliveredAt?: Date;
+
+  @Column({
+    type: 'enum',
+    enum: DeliveryStatus,
+    nullable: false,
+    default: DeliveryStatus.PENDING,
+  })
+  deliveryStatus: DeliveryStatus;
 
   @CreateDateColumn()
   createdAt: Date;
