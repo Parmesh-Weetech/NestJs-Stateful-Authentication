@@ -6,7 +6,11 @@ import * as nodemailer from 'nodemailer';
 import { Queue } from 'bullmq';
 import { SendEmailDTO } from './dtos/send-email.dto';
 import { SendEmailType } from './types/mail.type';
-
+import { createHash } from 'crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Mail } from './entities/mail.entity';
+import { Repository } from 'typeorm';
+import * as fs from 'fs';
 @Injectable()
 export class MailService implements OnModuleInit, OnModuleDestroy {
   private transporter: nodemailer.Transporter;
@@ -17,6 +21,9 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
 
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
+
+    @InjectRepository(Mail)
+    private readonly mailRepository: Repository<Mail>,
   ) {}
 
   async onModuleInit() {
@@ -44,15 +51,59 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
   }
 
   async sendMail(body: SendEmailDTO) {
+    // check whether templateName template exists or not
+    const templatePath = `${process.cwd()}/public/assets/templates/${body.templateName}.ejs`;
+
+    if (!fs.existsSync(templatePath)) {
+      throw new Error('Template not found');
+    }
+
+    const jobId = createHash('sha256')
+      .update(`${body.to}:${body.subject}:${body.templateName}`)
+      .digest('hex');
+
+    // Producer-side idempotency: if a log already exists as SENT/PROCESSING for this jobId,
+    // do not enqueue another job.
+    const existing = await this.mailRepository.findOne({ where: { jobId } });
+    if (existing?.status === SendEmailType.SENT) {
+      return {
+        jobId,
+        status: SendEmailType.SENT,
+        message: 'Email already send! Check Inbox',
+      };
+    }
+
+    if (existing?.status === SendEmailType.PROCESSING) {
+      return {
+        jobId,
+        status: SendEmailType.PROCESSING,
+        message: 'Email already processing!',
+      };
+    }
+
+    const mailLog = await this.mailRepository.save(
+      this.mailRepository.create({
+        jobId,
+        recipient: body.to,
+        subject: body.subject,
+        status: SendEmailType.PENDING,
+        templateName: body.templateName,
+        data: body.data,
+      }),
+    );
+
     const mailJob = await this.emailQueue.add(
-      process.env.EMAIL_JOB!,
+      'EMAIL_JOB',
       {
+        jobId,
+        id: mailLog.id,
         to: body.to,
         subject: body.subject,
         templateName: body.templateName,
         data: body.data,
       },
       {
+        jobId,
         attempts: 3,
         backoff: {
           type: 'exponential',
@@ -60,6 +111,9 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
         },
         removeOnComplete: true,
         removeOnFail: false,
+        // Poison-job safety: when job ultimately fails (after attempts), BullMQ retains it for inspection.
+        // DB will be marked FAILED/DLQ by the processor on final attempt.
+        // Keep enough evidence in DB; retry will re-run on thrown errors.
       },
     );
 

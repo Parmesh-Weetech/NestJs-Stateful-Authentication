@@ -58,15 +58,11 @@ import { Mail } from './mail/entities/mail.entity';
 
     BullModule.registerQueue({
       name: 'EMAIL_QUEUE',
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
-        removeOnComplete: false,
-        removeOnFail: false,
-      },
+    }),
+
+    // Real BullMQ dead-letter queue for poison email jobs.
+    BullModule.registerQueue({
+      name: 'EMAIL_DLQ_JOB',
     }),
 
     AuthModule,

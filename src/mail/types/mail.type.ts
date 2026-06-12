@@ -2,6 +2,7 @@ export enum SendEmailType {
   PENDING = 'PENDING',
   QUEUED = 'QUEUED',
   PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
+  SENT = 'SENT',
   FAILED = 'FAILED',
+  DLQ = 'DLQ', // Dead letter queue
 }

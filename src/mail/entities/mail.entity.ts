@@ -2,25 +2,26 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  PrimaryColumn,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { SendEmailType } from '../types/mail.type';
 
-@Entity('mails')
+@Entity('mails_logs')
 export class Mail {
-  @PrimaryColumn({ type: 'varchar' })
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({
-    type: 'varchar',
-  })
-  to: string;
+  @Index('IDX_mail_jobId_unique', { unique: true })
+  @Column()
+  // jobId is used for idempotency; enforce uniqueness to prevent duplicate logs/jobs.
+  jobId: string;
 
-  @Column({
-    type: 'varchar',
-  })
+  @Column({ type: 'varchar' })
+  recipient: string;
+
+  @Column({ type: 'varchar' })
   subject: string;
 
   @Column({
@@ -29,6 +30,31 @@ export class Mail {
     default: SendEmailType.PENDING,
   })
   status: SendEmailType;
+
+  @Column({
+    nullable: true,
+    type: 'text',
+  })
+  failureReason: string | null;
+
+  @Column({
+    nullable: true,
+  })
+  processingStartAt: Date;
+
+  @Column({
+    nullable: true,
+  })
+  sentAt: Date;
+
+  @Column()
+  templateName: string;
+
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+  })
+  data: Record<string, any>;
 
   @CreateDateColumn()
   createdAt: Date;
