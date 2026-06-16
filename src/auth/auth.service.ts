@@ -19,9 +19,8 @@ import { SessionInvalidationReason } from './types/invalidation_reason.type';
 import { UserPlan } from 'src/user/types/plan.type';
 import { TwoFactorAuthenticationService } from 'src/two-factor-authentication/two-factor-authentication.service';
 import { User } from 'src/user/entities/user.entity';
-import { NotificationService } from 'src/notification/notification.service';
-import { NotificationActorType } from 'src/notification/types/notification-actor.type';
-import { NotificationStreamService } from 'src/notification/notification-stream.service';
+import { randomBytes } from 'crypto';
+import * as fs from 'fs';
 
 @Injectable()
 export class AuthService {
@@ -51,6 +50,40 @@ export class AuthService {
       password: hashedPassword,
       plan,
     });
+  }
+
+  private getSessionSecret() {
+    return process.env.SESSION_SECRET!;
+  }
+
+  async changeSecret() {
+    const secret = this.getSessionSecret();
+
+    if (!secret) {
+      throw new InternalServerErrorException('Session secret not found');
+    }
+
+    const newSecret = randomBytes(32).toString('hex');
+
+    if (newSecret === secret || !newSecret) {
+      throw new InternalServerErrorException(
+        'Failed to generate new session secret',
+      );
+    }
+
+    const env = fs.readFileSync('.env', 'utf8');
+
+    const updated = env.replace(
+      /^SESSION_SECRET=.*$/m,
+      `SESSION_SECRET=${newSecret}`,
+    );
+
+    fs.writeFileSync('.env', updated);
+
+    return {
+      message: 'Session secret changed successfully',
+      newSecret,
+    };
   }
 
   async login(req: Request, deviceId?: string | null) {
