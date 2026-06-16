@@ -77,7 +77,6 @@ export class AuthController {
     return await this.authService.logout(req, deviceId as string);
   }
 
-  @Public()
   @Post('/change-secret')
   async changeSecret() {
     return await this.authService.changeSecret();
