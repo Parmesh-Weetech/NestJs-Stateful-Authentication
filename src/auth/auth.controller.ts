@@ -76,4 +76,10 @@ export class AuthController {
   async logout(@Req() req: Request, @Headers('X-Device-Id') deviceId: string) {
     return await this.authService.logout(req, deviceId as string);
   }
+
+  @UseGuards(AuthenticatedGuard, DeviceSignatureCheckGuard)
+  @Post('/change-secret')
+  async changeSecret() {
+    return await this.authService.changeSecret();
+  }
 }
